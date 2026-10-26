@@ -269,7 +269,7 @@
             }
         }
 
-        // --- PLANES DE LECTURA (BUSCADOR INTELIGENTE: TÍTULO, DESCRIPCIÓN Y PASAJES) ---
+        // --- PLANES DE LECTURA (BÚSQUEDA PROFUNDA Y BOTÓN DE RESTABLECER) ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -281,8 +281,8 @@
                 <div class="space-y-2 mb-3">
                     <button onclick="mostrarFormularioCrearPlan()" class="w-full py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition shadow-sm">+ Crear Nuevo Plan</button>
                     <div class="flex gap-2">
-                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar por título o pasaje..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
-                        <button onclick="filtrarPlanes()" class="px-4 py-2 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl font-semibold text-sm">Buscar</button>
+                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar por título o pasaje (ej: Romanos)..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <button onclick="filtrarPlanes()" class="px-4 py-2 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                 </div>
                 <div id="plans-list" class="space-y-3">
@@ -304,12 +304,17 @@
         function renderizarPlanes(planes) {
             const listContainer = document.getElementById('plans-list');
             if (!planes || planes.length === 0) {
-                listContainer.innerHTML = '<p class="text-center opacity-60 py-5">No se encontraron planes de lectura.</p>';
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 space-y-3">
+                        <p class="opacity-60 text-sm">No se encontraron planes de lectura.</p>
+                        <button onclick="cargarPlanes()" class="px-4 py-2 bg-zinc-200 dark:bg-zinc-700 rounded-xl text-xs font-semibold active:scale-95 transition">🔄 Ver todos los planes</button>
+                    </div>
+                `;
                 return;
             }
 
             listContainer.innerHTML = planes.map(plan => `
-                <div onclick="verDetallePlan('${plan.id}', '${plan.title}')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition">
+                <div onclick="verDetallePlan('${plan.id}', '${plan.title.replace(/'/g, "\\'")}')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition">
                     <h3 class="font-bold text-base">${plan.title}</h3>
                     <p class="text-xs opacity-70">${plan.description || ''}</p>
                     ${plan.start_date && plan.end_date ? `<div class="text-xs text-amber-500 font-medium mt-1">🗓️ ${plan.start_date} al ${plan.end_date} ${plan.start_time ? '⏰ ' + plan.start_time : ''}</div>` : (plan.start_time ? `<div class="text-xs text-amber-500 font-medium mt-1">⏰ Hora: ${plan.start_time}</div>` : '')}
@@ -320,21 +325,23 @@
 
         async function filtrarPlanes() {
             const query = document.getElementById('planSearchInput').value.toLowerCase().trim();
+            const listContainer = document.getElementById('plans-list');
+            
             if (!query) {
                 renderizarPlanes(allPlansCache);
                 return;
             }
 
-            document.getElementById('plans-list').innerHTML = '<div class="text-center py-6 opacity-65">Buscando planes...</div>';
+            listContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando planes y pasajes...</div>';
 
             try {
-                // Buscamos planes que coincidan por título o descripción
+                // 1. Coincidencia en título o descripción
                 let matchedPlans = allPlansCache.filter(p => 
                     (p.title && p.title.toLowerCase().includes(query)) || 
                     (p.description && p.description.toLowerCase().includes(query))
                 );
 
-                // También buscamos en los días/pasajes de los planes en Supabase
+                // 2. Coincidencia en los pasajes de los días dentro de Supabase
                 const { data: daysData } = await supabaseClient
                     .from('reading_plan_days')
                     .select('plan_id')
@@ -344,7 +351,6 @@
                     const planIdsFromDays = [...new Set(daysData.map(d => d.plan_id))];
                     const extraPlans = allPlansCache.filter(p => planIdsFromDays.includes(p.id));
                     
-                    // Unimos ambos resultados sin duplicados
                     const idsMap = new Set(matchedPlans.map(p => p.id));
                     extraPlans.forEach(p => {
                         if (!idsMap.has(p.id)) matchedPlans.push(p);
@@ -354,7 +360,7 @@
                 renderizarPlanes(matchedPlans);
             } catch (err) {
                 console.error(err);
-                document.getElementById('plans-list').innerHTML = '<p class="text-center text-red-500">Error en la búsqueda.</p>';
+                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al buscar en los planes.</p>';
             }
         }
 
