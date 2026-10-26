@@ -139,7 +139,7 @@
             }
         }
 
-        // 3. VERSÍCULOS + MARCADOR ⭐
+        // 3. VERSÍCULOS + MARCADOR ⭐ (Guardado seguro en LocalStorage)
         async function seleccionarCapitulo(chapterNumber) {
             currentView = 'verses';
             backBtn.classList.remove('hidden');
@@ -155,7 +155,7 @@
                 contentBox.innerHTML = data.map(v => `
                     <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 leading-relaxed text-sm flex justify-between items-start gap-2">
                         <div><span class="font-bold text-xs opacity-60 mr-1">${v.verse}</span> ${v.text}</div>
-                        <button onclick="guardarMarcador(${v.id})" class="text-xs opacity-50 hover:opacity-100 transition px-2 py-1 bg-zinc-200 dark:bg-zinc-700 rounded" title="Guardar marcador">⭐</button>
+                        <button onclick="guardarMarcador('${selectedBook.name}', ${chapterNumber}, ${v.verse}, '${v.text.replace(/'/g, "\\'")}')" class="text-xs opacity-50 hover:opacity-100 transition px-2 py-1 bg-zinc-200 dark:bg-zinc-700 rounded" title="Guardar marcador">⭐</button>
                     </div>
                 `).join('');
             } catch (err) {
@@ -163,74 +163,58 @@
             }
         }
 
-        async function guardarMarcador(verseId) {
+        function guardarMarcador(bookName, chapter, verse, text) {
             try {
-                const { error } = await supabaseClient
-                    .from('user_bookmarks')
-                    .insert([{ 
-                        telegram_id: currentTelegramId, 
-                        verse_id: verseId,
-                        color: 'amber',
-                        note: ''
-                    }]);
-
-                if (error) throw error;
-                alert("⭐ ¡Versículo guardado en tus favoritos!");
+                let favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
+                // Evitar duplicados
+                const existe = favoritos.some(f => f.book === bookName && f.chapter === chapter && f.verse === verse);
+                if (!existe) {
+                    favoritos.push({ book: bookName, chapter, verse, text });
+                    localStorage.setItem('bible_favorites', JSON.stringify(favoritos));
+                    alert("⭐ ¡Versículo guardado en tus favoritos!");
+                } else {
+                    alert("ℹ️ Este versículo ya estaba en tus favoritos.");
+                }
             } catch (err) {
                 console.error(err);
                 alert("No se pudo guardar el marcador.");
             }
         }
 
-        // FAVORITOS
-        async function cargarFavoritos() {
+        // CARGAR FAVORITOS DESDE LOCALSTORAGE
+        function cargarFavoritos() {
             currentView = 'favorites';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "⭐ Mis Favoritos";
             mainSubtitle.innerText = "Tus versículos guardados";
             mainSubtitle.style.display = 'block';
 
-            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando marcadores...</div>';
-
             try {
-                const { data, error } = await supabaseClient
-                    .from('user_bookmarks')
-                    .select('*')
-                    .eq('telegram_id', currentTelegramId)
-                    .order('id', { ascending: false });
-
-                if (error) throw error;
-                if (!data || data.length === 0) {
+                const favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
+                if (favoritos.length === 0) {
                     contentBox.innerHTML = '<p class="text-center opacity-60 py-10">Aún no tienes versículos guardados como favoritos.</p>';
                     return;
                 }
 
-                const verseIds = data.map(b => b.verse_id);
-                const { data: versesData } = await supabaseClient
-                    .from('bible_verses')
-                    .select('id, chapter, verse, text, book_id, bible_books(name, modern_name)')
-                    .in('id', verseIds);
-
-                const versesMap = {};
-                (versesData || []).forEach(v => { versesMap[v.id] = v; });
-
-                contentBox.innerHTML = data.map(fav => {
-                    const v = versesMap[fav.verse_id];
-                    if (!v) return '';
-                    const bookName = v.bible_books?.modern_name || v.bible_books?.name || 'Biblia';
-                    return `
-                        <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm space-y-1 shadow-sm border-l-4 border-amber-500">
-                            <div class="font-bold text-amber-600 dark:text-amber-400">
-                                ${bookName} ${v.chapter}:${v.verse}
-                            </div>
-                            <div class="opacity-90">"${v.text}"</div>
+                contentBox.innerHTML = favoritos.map((fav, index) => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm space-y-1 shadow-sm border-l-4 border-amber-500 relative">
+                        <div class="font-bold text-amber-600 dark:text-amber-400 flex justify-between">
+                            <span>${fav.book} ${fav.chapter}:${fav.verse}</span>
+                            <button onclick="eliminarFavorito(${index})" class="text-xs text-red-500 hover:underline">Eliminar</button>
                         </div>
-                    `;
-                }).join('');
+                        <div class="opacity-90">"${fav.text}"</div>
+                    </div>
+                `).join('');
             } catch (err) {
-                console.error(err);
                 contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar los marcadores.</p>';
             }
+        }
+
+        function eliminarFavorito(index) {
+            let favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
+            favoritos.splice(index, 1);
+            localStorage.setItem('bible_favorites', JSON.stringify(favoritos));
+            cargarFavoritos();
         }
 
         // BUSCADOR
@@ -286,25 +270,34 @@
             }
         }
 
-        // PLANES DE LECTURA (INGRESAR Y ANULAR)
+        // --- PLANES DE LECTURA CON OPCIÓN DE CREAR PLAN ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "📅 Planes de Lectura";
-            mainSubtitle.innerText = "Selecciona un devocional";
+            mainSubtitle.innerText = "Selecciona o crea un devocional";
             mainSubtitle.style.display = 'block';
 
-            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando planes...</div>';
+            contentBox.innerHTML = `
+                <div class="mb-3">
+                    <button onclick="mostrarFormularioCrearPlan()" class="w-full py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition shadow-sm">+ Crear Nuevo Plan</button>
+                </div>
+                <div id="plans-list" class="space-y-3">
+                    <div class="text-center py-6 opacity-65">Cargando planes...</div>
+                </div>
+            `;
 
             try {
                 const { data, error } = await supabaseClient.from('reading_plans').select('*');
                 if (error) throw error;
+                
+                const listContainer = document.getElementById('plans-list');
                 if (!data || data.length === 0) {
-                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">No hay planes disponibles.</p>';
+                    listContainer.innerHTML = '<p class="text-center opacity-60 py-5">No hay planes disponibles. ¡Crea el primero arriba!</p>';
                     return;
                 }
 
-                contentBox.innerHTML = data.map(plan => `
+                listContainer.innerHTML = data.map(plan => `
                     <div onclick="verDetallePlan('${plan.id}', '${plan.title}')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition">
                         <h3 class="font-bold text-base">${plan.title}</h3>
                         <p class="text-xs opacity-70">${plan.description}</p>
@@ -312,7 +305,78 @@
                     </div>
                 `).join('');
             } catch (err) {
-                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar planes.</p>';
+                document.getElementById('plans-list').innerHTML = '<p class="text-center text-red-500">Error al cargar planes.</p>';
+            }
+        }
+
+        function mostrarFormularioCrearPlan() {
+            currentView = 'create_plan';
+            mainTitle.innerText = "✨ Crear Plan";
+            mainSubtitle.innerText = "Añade un nuevo devocional";
+
+            contentBox.innerHTML = `
+                <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3">
+                    <div>
+                        <label class="text-xs font-semibold opacity-70">Título del Plan</label>
+                        <input type="text" id="newPlanTitle" placeholder="Ej: Venciendo el miedo" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold opacity-70">Descripción</label>
+                        <textarea id="newPlanDesc" placeholder="Breve descripción..." class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-16"></textarea>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold opacity-70">Días del plan (Ej: Día 1: Paz | Juan 14:27)</label>
+                        <textarea id="newPlanDays" placeholder="Día 1 - Título | Pasaje&#10;Día 2 - Título | Pasaje" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
+                    </div>
+                    <button onclick="guardarNuevoPlan()" class="w-full py-2.5 bg-green-600 text-white rounded-lg font-semibold text-sm active:scale-95 transition">Guardar Plan en Base de Datos</button>
+                </div>
+            `;
+        }
+
+        async function guardarNuevoPlan() {
+            const title = document.getElementById('newPlanTitle').value.trim();
+            const description = document.getElementById('newPlanDesc').value.trim();
+            const daysText = document.getElementById('newPlanDays').value.trim();
+
+            if (!title || !daysText) {
+                alert("Por favor completa el título y los días del plan.");
+                return;
+            }
+
+            try {
+                // 1. Insertar el plan principal
+                const { data: planData, error: planError } = await supabaseClient
+                    .from('reading_plans')
+                    .insert([{ title, description }])
+                    .select();
+
+                if (planError) throw planError;
+                const planId = planData[0].id;
+
+                // 2. Procesar y parsear las líneas de los días
+                const lines = daysText.split('\n');
+                let dayCounter = 1;
+                for (let line of lines) {
+                    if (line.trim() !== '') {
+                        let parts = line.split('|');
+                        let dayTitle = parts[0].replace(`Día ${dayCounter}`, '').replace('-', '').trim();
+                        let passage = parts[1] ? parts[1].trim() : 'Lectura bíblica';
+
+                        await supabaseClient.from('reading_plan_days').insert([{
+                            plan_id: planId,
+                            day_number: dayCounter,
+                            title: dayTitle || `Día ${dayCounter}`,
+                            passage: passage
+                        }]);
+                        dayCounter++;
+                    }
+                }
+
+                alert("🎉 ¡Plan de lectura creado con éxito!");
+                cargarPlanes();
+            } catch (err) {
+                console.error(err);
+                alert("Error al crear el plan en Supabase.");
             }
         }
 
@@ -491,7 +555,7 @@
 
                 const shuffledData = data.sort(() => 0.5 - Math.random()).slice(0, 5);
 
-                contentBox.innerHTML = shuffledData.map((q, idx) => `
+                document.getElementById('trivia-questions-container').innerHTML = shuffledData.map((q, idx) => `
                     <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm">
                         <p class="font-semibold text-sm">${idx + 1}. ${q.question_text}</p>
                         <div class="grid grid-cols-1 gap-2">
@@ -526,7 +590,7 @@
                 seleccionarLibro(selectedBook.id, selectedBook.name);
             } else if (currentView === 'chapters') {
                 cargarLibros();
-            } else if (currentView === 'plan_detail') {
+            } else if (currentView === 'plan_detail' || currentView === 'create_plan') {
                 cargarPlanes();
             }
         }
