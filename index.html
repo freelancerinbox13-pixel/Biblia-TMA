@@ -78,7 +78,7 @@
         const mainTitle = document.getElementById('main-title');
         const mainSubtitle = document.getElementById('main-subtitle');
 
-        // 1. LIBROS
+        // 1. BIBLIOTECA - LIBROS
         async function cargarLibros() {
             currentView = 'books';
             backBtn.classList.add('hidden');
@@ -182,7 +182,7 @@
             }
         }
 
-        // FAVORITOS SEGURO (Sin relaciones complejas para evitar errores)
+        // FAVORITOS
         async function cargarFavoritos() {
             currentView = 'favorites';
             backBtn.classList.add('hidden');
@@ -205,7 +205,6 @@
                     return;
                 }
 
-                // Extraer los IDs de los versículos marcados
                 const verseIds = data.map(b => b.verse_id);
                 const { data: versesData } = await supabaseClient
                     .from('bible_verses')
@@ -287,7 +286,7 @@
             }
         }
 
-        // PLANES DE LECTURA
+        // PLANES DE LECTURA (INGRESAR Y ANULAR)
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -301,7 +300,7 @@
                 const { data, error } = await supabaseClient.from('reading_plans').select('*');
                 if (error) throw error;
                 if (!data || data.length === 0) {
-                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">No hay planes disponibles. Asegúrate de insertar planes en la tabla reading_plans de Supabase.</p>';
+                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">No hay planes disponibles.</p>';
                     return;
                 }
 
@@ -459,7 +458,8 @@
                 alert("🙏 Petición compartida.");
                 obtenerListaOraciones();
             } catch (err) {
-                alert("No se pudo enviar.");
+                console.error(err);
+                alert("No se pudo enviar la petición.");
             }
         }
 
@@ -491,7 +491,7 @@
 
                 const shuffledData = data.sort(() => 0.5 - Math.random()).slice(0, 5);
 
-                document.getElementById('trivia-questions-container').innerHTML = shuffledData.map((q, idx) => `
+                contentBox.innerHTML = shuffledData.map((q, idx) => `
                     <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm">
                         <p class="font-semibold text-sm">${idx + 1}. ${q.question_text}</p>
                         <div class="grid grid-cols-1 gap-2">
