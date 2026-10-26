@@ -269,6 +269,650 @@
             }
         }
 
+        // --- PLANES DE LECTURA (CON BUSCADOR, FECHAS Y HORA) ---
+        async function cargarPlanes() {
+            currentView = 'plans';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "📅 Planes de Lectura";
+            mainSubtitle.innerText = "Selecciona o busca un devocional";
+            mainSubtitle.style.display = 'block';
+
+            contentBox.innerHTML = `
+                <div class="space-y-2 mb-3">
+                    <button onclick="mostrarFormularioCrearPlan()" class="w-full py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition shadow-sm">+ Crear Nuevo Plan</button>
+                    <input type="text" id="planSearchInput" oninput="filtrarPlanes()" placeholder="🔍 Buscar planes de lectura..." class="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                </div>
+                <div id="plans-list" class="space-y-3">
+                    <div class="text-center py-6 opacity-65">Cargando planes...</div>
+                </div>
+            `;
+
+            try {
+                const { data, error } = await supabaseClient.from('reading_plans').select('*');
+                if (error) throw error;
+                
+                allPlansCache = data || [];
+                renderizarPlanes(allPlansCache);
+            } catch (err) {
+                document.getElementById('plans-list').innerHTML = '<p class="text-center text-red-500">Error al cargar planes.</p>';
+            }
+        }
+
+        function renderizarPlanes(planes) {
+            const listContainer = document.getElementById('plans-list');
+            if (!planes || planes.length === 0) {
+                listContainer.innerHTML = '<p class="text-center opacity-60 py-5">No se encontraron planes de lectura.</p>';
+                return;
+            }
+
+            listContainer.innerHTML = planes.map(plan => `
+                <div onclick="verDetallePlan('${plan.id}', '${plan.title}')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition">
+                    <h3 class="font-bold text-base">${plan.title}</h3>
+                    <p class="text-xs opacity-70">${plan.description || ''}</p>
+                    ${plan.start_date && plan.end_date ? `<div class="text-xs text-amber-500 font-medium mt-1">🗓️ ${plan.start_date} al ${plan.end_date} ${plan.start_time ? '⏰ ' + plan.start_time : ''}</div>` : (plan.start_time ? `<div class="text-xs text-amber-500 font-medium mt-1">⏰ Hora: ${plan.start_time}</div>` : '')}
+                    <span class="text-xs text-amber-500 font-semibold inline-block mt-2">Ver días del plan →</span>
+                </div>
+            `).join('');
+        }
+
+        async function filtrarPlanes() {
+            const query = document.getElementById('planSearchInput').value.toLowerCase().trim();
+            
+            if (!allPlansCache || allPlansCache.length === 0) {
+                try {
+                    const { data } = await supabaseClient.from('reading_plans').select('*');
+                    allPlansCache = data || [];
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            const filtrados = allPlansCache.filter(p => 
+                (p.title && p.title.toLowerCase().includes(query)) || 
+                (p.description && p.description.toLowerCase().includes(query))
+            );
+            renderizarPlanes(filtrados);
+        }
+
+        function mostrarFormularioCrearPlan() {
+            currentView = 'create_plan';
+            mainTitle.innerText = "✨ Crear Plan";
+            mainSubtitle.innerText = "Añade un nuevo devocional";
+
+            contentBox.innerHTML = `
+                <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3">
+                    <div>
+                        <label class="text-xs font-semibold opacity-70">Título del Plan</label>
+                        <input type="text" id="newPlanTitle" placeholder="Ej: Venciendo el miedo" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold opacity-70">Descripción</label>
+                        <textarea id="newPlanDesc" placeholder="Breve descripción..." class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-16"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs font-semibold opacity-70">Fecha de Inicio</label>
+                            <input type="date" id="newPlanStart" class="w-full p-2 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold opacity-70">Fecha de Fin</label>
+                            <input type="date" id="newPlanEnd" class="w-full p-2 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold opacity-70">Hora de Comienzo diaria</label>
+                        <input type="time" id="newPlanTime" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold opacity-70">Días del plan (Ej: Día 1: Paz | Juan 14:27)</label>
+                        <textarea id="newPlanDays" placeholder="Día 1 - Título | Pasaje&#10;Día 2 - Título | Pasaje" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
+                    </div>
+                    <button onclick="guardarNuevoPlan()" class="w-full py-2.5 bg-green-600 text-white rounded-lg font-semibold text-sm active:scale-95 transition">Guardar Plan en Base de Datos</button>
+                </div>
+            `;
+        }
+
+        async function guardarNuevoPlan() {
+            const title = document.getElementById('newPlanTitle').value.trim();
+            const description = document.getElementById('newPlanDesc').value.trim();
+            const start_date = document.getElementById('newPlanStart').value;
+            const end_date = document.getElementById('newPlanEnd').value;
+            const start_time = document.getElementById('newPlanTime').value;
+            const daysText = document.getElementById('newPlanDays').value.trim();
+
+            if (!title || !daysText) {
+                alert("Por favor completa al menos el título y los días del plan.");
+                return;
+            }
+
+            try {
+                const { data: planData, error: planError } = await supabaseClient
+                    .from('reading_plans')
+                    .insert([{ title, description, start_date, end_date, start_time }])
+                    .select();
+
+                if (planError) throw planError;
+                const planId = planData[0].id;
+
+                const lines = daysText.split('\n');
+                let dayCounter = 1;
+                for (let line of lines) {
+                    if (line.trim() !== '') {
+                        let parts = line.split('|');
+                        let dayTitle = parts[0].replace(`Día ${dayCounter}`, '').replace('-', '').trim();
+                        let passage = parts[1] ? parts[1].trim() : 'Lectura bíblica';
+
+                        await supabaseClient.from('reading_plan_days').insert([{
+                            plan_id: planId,
+                            day_number: dayCounter,
+                            title: dayTitle || `Día ${dayCounter}`,
+                            passage: passage
+                        }]);
+                        dayCounter++;
+                    }
+                }
+
+                alert("🎉 ¡Plan de lectura creado con éxito!");
+                cargarPlanes();
+            } catch (err) {
+                console.error(err);
+                alert("Error al crear el plan. (Asegúrate de tener las columnas start_date, end_date y start_time en la tabla reading_plans si deseas guardarlas).");
+            }
+        }
+
+        async function verDetallePlan(planId, planTitle) {
+            currentView = 'plan_detail';
+            backBtn.classList.remove('hidden');
+            selectedPlan = { id: planId, title: planTitle };
+            mainTitle.innerText = planTitle;
+            mainSubtitle.innerText = "Días del devocional";
+
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando días del plan...</div>';
+
+            try {
+                const { data: daysData, error: daysError } = await supabaseClient
+                    .from('reading_plan_days')
+                    .select('*')
+                    .eq('plan_id', planId)
+                    .order('day_number', { ascending: true });
+
+                if (daysError) throw daysError;
+
+                const { data: progressData } = await supabaseClient
+                    .from('user_plan_progress')
+                    .select('current_day, completed')
+                    .eq('telegram_id', currentTelegramId)
+                    .eq('plan_id', planId);
+
+                const completedDays = new Set((progressData || []).filter(p => p.completed).map(p => p.current_day));
+
+                if (!daysData || daysData.length === 0) {
+                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">Este plan aún no tiene días cargados.</p>';
+                    return;
+                }
+
+                contentBox.innerHTML = daysData.map(d => {
+                    const isCompleted = completedDays.has(d.day_number);
+                    return `
+                        <div id="plan_day_${d.day_number}" class="p-3 rounded-lg ${isCompleted ? 'bg-green-500/10 border border-green-500/40' : 'bg-zinc-50 dark:bg-zinc-800/50'} flex justify-between items-center text-sm mb-2 transition">
+                            <div>
+                                <span class="font-bold text-amber-500 mr-2">Día ${d.day_number}</span>
+                                <span class="font-semibold">${d.title}</span>
+                                <div class="text-xs opacity-70 mt-0.5">Lectura: ${d.passage}</div>
+                            </div>
+                            <div>
+                                ${isCompleted 
+                                    ? `<button onclick="anularDiaPlan('${planId}', ${d.day_number})" class="px-3 py-1.5 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">Anular</button>`
+                                    : `<button onclick="ingresarDiaPlan('${planId}', ${d.day_number})" class="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">Ingresar</button>`
+                                }
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar detalle del plan.</p>';
+            }
+        }
+
+        async function ingresarDiaPlan(planId, dayNumber) {
+            try {
+                await supabaseClient
+                    .from('user_plan_progress')
+                    .delete()
+                    .eq('telegram_id', currentTelegramId)
+                    .eq('plan_id', planId)
+                    .eq('current_day', dayNumber);
+
+                const { error } = await supabaseClient
+                    .from('user_plan_progress')
+                    .insert([{ 
+                        telegram_id: currentTelegramId, 
+                        plan_id: planId, 
+                        current_day: dayNumber, 
+                        completed: true 
+                    }]);
+
+                if (error) throw error;
+                verDetallePlan(planId, selectedPlan.title);
+            } catch (err) {
+                console.error(err);
+                alert("No se pudo ingresar al plan.");
+            }
+        }
+
+        async function anularDiaPlan(planId, dayNumber) {
+            try {
+                const { error } = await supabaseClient
+                    .from('user_plan_progress')
+                    .delete()
+                    .eq('telegram_id', currentTelegramId)
+                    .eq('plan_id', planId)
+                    .eq('current_day', dayNumber);
+
+                if (error) throw error;
+                verDetallePlan(planId, selectedPlan.title);
+            } catch (err) {
+                console.error(err);
+                alert("No se pudo anular el progreso.");
+            }
+        }
+
+        // ORACIÓN
+        async function cargarOraciones() {
+            currentView = 'prayer';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "🙏 Peticiones de Oración";
+            mainSubtitle.innerText = "Comunidad de intercesión";
+            mainSubtitle.style.display = 'block';
+
+            contentBox.innerHTML = `
+                <div class="space-y-4">
+                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2">
+                        <textarea id="prayerInput" placeholder="Escribe tu petición de oración..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
+                        <button onclick="enviarOracion()" class="w-full py-2.5 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-lg font-semibold text-sm">Compartir Petición</button>
+                    </div>
+                    <div id="prayer-list" class="space-y-2"><div class="text-center py-6 opacity-65">Cargando...</div></div>
+                </div>
+            `;
+            obtenerListaOraciones();
+        }
+
+        async function obtenerListaOraciones() {
+            const listContainer = document.getElementById('prayer-list');
+            try {
+                const { data, error } = await supabaseClient.from('prayer_requests').select('*').order('created_at', { ascending: false }).limit(20);
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    listContainer.innerHTML = '<p class="text-center opacity-60 py-4">No hay peticiones aún.</p>';
+                    return;
+                }
+                listContainer.innerHTML = data.map(p => `<div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm"><p class="opacity-90">${p.request_text}</p></div>`).join('');
+            } catch (err) {
+                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al cargar oraciones.</p>';
+            }
+        }
+
+        async function enviarOracion() {
+            const text = document.getElementById('prayerInput').value.trim();
+            if (!text) return;
+            try {
+                const { error } = await supabaseClient.from('prayer_requests').insert([{ telegram_id: currentTelegramId, request_text: text, is_public: true }]);
+                if (error) throw error;
+                document.getElementById('prayerInput').value = '';
+                alert("🙏 Petición compartida.");
+                obtenerListaOraciones();
+            } catch (err) {
+                console.error(err);
+                alert("No se pudo enviar la petición.");
+            }
+        }
+
+        // TRIVIA
+        async function cargarTrivia() {
+            currentView = 'trivia';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "❓ Trivia Bíblica";
+            mainSubtitle.innerText = "Banco de preguntas aleatorias";
+            mainSubtitle.style.display = 'block';
+
+            contentBox.innerHTML = `
+                <div class="mb-4">
+                    <button onclick="cargarTrivia()" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-sm shadow-md active:scale-95 transition flex items-center justify-center gap-2">
+                        🔄 Nueva Partida / Mezclar Preguntas
+                    </button>
+                </div>
+                <div id="trivia-questions-container" class="space-y-3">
+                    <div class="text-center py-10 opacity-65">Mezclando preguntas aleatorias...</div>
+                </div>
+            `;
+
+            try {
+                const { data, error } = await supabaseClient.from('trivia_questions').select('*');
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    document.getElementById('trivia-questions-container').innerHTML = '<p class="text-center opacity-60 py-5">No hay preguntas disponibles.</p>';
+                    return;
+                }
+
+                const shuffledData = data.sort(() => 0.5 - Math.random()).slice(0, 5);
+
+                const preguntasHTML = shuffledData.map((q, idx) => `
+                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm">
+                        <p class="font-semibold text-sm">${idx + 1}. ${q.question_text}</p>
+                        <div class="grid grid-cols-1 gap-2">
+                            <button onclick="responderTrivia(${q.id}, 'A', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">A) ${q.option_a}</button>
+                            <button onclick="responderTrivia(${q.id}, 'B', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">B) ${q.option_b}</button>
+                            <button onclick="responderTrivia(${q.id}, 'C', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">C) ${q.option_c}</button>
+                            <button onclick="responderTrivia(${q.id}, 'D', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">D) ${q.option_d}</button>
+                        </div>
+                        <div id="trivia_feedback_${q.id}" class="text-xs font-bold pt-1"></div>
+                    </div>
+                `).join('');
+
+                document.getElementById('trivia-questions-container').innerHTML = preguntasHTML;
+            } catch (err) {
+                document.getElementById('trivia-questions-container').innerHTML = '<p class="text-center text-red-500">Error al cargar la trivia.</p>';
+            }
+        }
+
+        function responderTrivia(qId, selectedOption, correctOption) {
+            const feedbackBox = document.getElementById(`trivia_feedback_${qId}`);
+            const buttons = document.querySelectorAll(`.option_btn_${qId}`);
+            buttons.forEach(btn => btn.disabled = true);
+
+            if (selectedOption === correctOption) {
+                feedbackBox.innerHTML = '<span class="text-green-500">✨ ¡Respuesta Correcta!</span>';
+            } else {
+                feedbackBox.innerHTML = `<span class="text-red-500">❌ Incorrecto. La opción correcta era la ${correctOption}</span>`;
+            }
+        }
+
+        // VOLVER
+        function volverAtras() {
+            if (currentView === 'verses') {
+                seleccionarLibro(selectedBook.id, selectedBook.name);
+            } else if (currentView === 'chapters') {
+                cargarLibros();
+            } else if (currentView === 'plan_detail' || currentView === 'create_plan') {
+                cargarPlanes();
+            }
+        }
+
+        cargarLibros();
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblia TMA</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SDK de Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans pb-20">
+
+    <div class="max-w-md mx-auto">
+        <!-- CABECERA ÚNICA -->
+        <header class="mb-4 flex items-center justify-between">
+            <button id="back-btn" onclick="volverAtras()" class="hidden px-3 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-sm font-medium active:scale-95 transition">
+                ← Volver
+            </button>
+            <div class="text-center flex-1">
+                <h1 id="main-title" class="text-2xl font-bold">📖 Biblia TMA</h1>
+                <p id="main-subtitle" class="text-sm opacity-70">Tu espacio de lectura en Telegram</p>
+            </div>
+            <div class="w-12"></div>
+        </header>
+
+        <!-- BARRA DE NAVEGACIÓN RÁPIDA -->
+        <nav class="grid grid-cols-6 gap-1 mb-5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-center text-xs font-medium">
+            <button onclick="cargarLibros()" class="py-2 rounded-lg bg-zinc-200 dark:bg-zinc-700 transition">📖 Biblia</button>
+            <button onclick="abrirBuscador()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">🔍 Buscar</button>
+            <button onclick="cargarFavoritos()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">⭐ Favoritos</button>
+            <button onclick="cargarPlanes()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">📅 Planes</button>
+            <button onclick="cargarOraciones()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">🙏 Oración</button>
+            <button onclick="cargarTrivia()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">❓ Trivia</button>
+        </nav>
+
+        <!-- CONTENEDOR DE DATOS -->
+        <div id="content-box" class="space-y-3">
+            <div class="text-center py-10 opacity-65">Cargando...</div>
+        </div>
+    </div>
+
+    <script>
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+
+        const SUPABASE_URL = 'https://bteeppgksogbqozqvzxu.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_DOO_WWtFKHNPgMPmr1dfuA_xQ4BEniF';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentView = 'books'; 
+        let selectedBook = null;
+        let selectedPlan = null;
+        let allPlansCache = [];
+        
+        const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+        let currentTelegramId = tgUser?.id || 123456789;
+        let currentUserName = tgUser?.first_name || 'Usuario Demo';
+
+        async function registrarUsuario() {
+            try {
+                await supabaseClient.from('users').upsert([{
+                    telegram_id: currentTelegramId,
+                    username: currentUserName,
+                    updated_at: new Date()
+                }], { onConflict: 'telegram_id' });
+            } catch (err) {
+                console.error("Error al registrar usuario:", err);
+            }
+        }
+        registrarUsuario();
+
+        const contentBox = document.getElementById('content-box');
+        const backBtn = document.getElementById('back-btn');
+        const mainTitle = document.getElementById('main-title');
+        const mainSubtitle = document.getElementById('main-subtitle');
+
+        // 1. BIBLIOTECA - LIBROS
+        async function cargarLibros() {
+            currentView = 'books';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "📖 Biblia TMA";
+            mainSubtitle.innerText = "Tu espacio de lectura en Telegram";
+            mainSubtitle.style.display = 'block';
+            
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando libros...</div>';
+
+            try {
+                const { data, error } = await supabaseClient.from('bible_books').select('*').order('id', { ascending: true });
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    contentBox.innerHTML = '<p class="text-center opacity-60">No hay libros cargados.</p>';
+                    return;
+                }
+
+                contentBox.innerHTML = data.map(book => `
+                    <div onclick="seleccionarLibro('${book.id}', '${book.name}')" class="flex items-center justify-between p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 active:scale-98 transition cursor-pointer shadow-sm">
+                        <div>
+                            <span class="font-semibold text-base">${book.name}</span>
+                            <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-700 opacity-80">${book.testament || ''}</span>
+                        </div>
+                        <span class="opacity-40 text-lg">›</span>
+                    </div>
+                `).join('');
+            } catch (err) {
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar los libros.</p>';
+            }
+        }
+
+        // 2. CAPÍTULOS
+        async function seleccionarLibro(bookId, bookName) {
+            selectedBook = { id: bookId, name: bookName };
+            currentView = 'chapters';
+            backBtn.classList.remove('hidden');
+            mainTitle.innerText = bookName;
+            mainSubtitle.innerText = "Selecciona un capítulo";
+
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando capítulos...</div>';
+
+            try {
+                const { data, error } = await supabaseClient.from('bible_verses').select('chapter').eq('book_id', bookId);
+                if (error) throw error;
+                const chapters = [...new Set(data.map(item => item.chapter))].sort((a, b) => a - b);
+
+                contentBox.innerHTML = `
+                    <div class="grid grid-cols-4 gap-2">
+                        ${chapters.map(chNum => `
+                            <div onclick="seleccionarCapitulo(${chNum})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center font-semibold active:scale-95 transition cursor-pointer shadow-sm">
+                                ${chNum}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (err) {
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar capítulos.</p>';
+            }
+        }
+
+        // 3. VERSÍCULOS + MARCADOR ⭐
+        async function seleccionarCapitulo(chapterNumber) {
+            currentView = 'verses';
+            backBtn.classList.remove('hidden');
+            mainTitle.innerText = `${selectedBook.name} - Cap. ${chapterNumber}`;
+            mainSubtitle.style.display = 'none';
+
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando versículos...</div>';
+
+            try {
+                const { data, error } = await supabaseClient.from('bible_verses').select('*').eq('book_id', selectedBook.id).eq('chapter', chapterNumber).order('verse', { ascending: true });
+                if (error) throw error;
+
+                contentBox.innerHTML = data.map(v => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 leading-relaxed text-sm flex justify-between items-start gap-2">
+                        <div><span class="font-bold text-xs opacity-60 mr-1">${v.verse}</span> ${v.text}</div>
+                        <button onclick="guardarMarcador('${selectedBook.name}', ${chapterNumber}, ${v.verse}, '${v.text.replace(/'/g, "\\'")}')" class="text-xs opacity-50 hover:opacity-100 transition px-2 py-1 bg-zinc-200 dark:bg-zinc-700 rounded" title="Guardar marcador">⭐</button>
+                    </div>
+                `).join('');
+            } catch (err) {
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar versículos.</p>';
+            }
+        }
+
+        function guardarMarcador(bookName, chapter, verse, text) {
+            try {
+                let favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
+                const existe = favoritos.some(f => f.book === bookName && f.chapter === chapter && f.verse === verse);
+                if (!existe) {
+                    favoritos.push({ book: bookName, chapter, verse, text });
+                    localStorage.setItem('bible_favorites', JSON.stringify(favoritos));
+                    alert("⭐ ¡Versículo guardado en tus favoritos!");
+                } else {
+                    alert("ℹ️ Este versículo ya estaba en tus favoritos.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("No se pudo guardar el marcador.");
+            }
+        }
+
+        function cargarFavoritos() {
+            currentView = 'favorites';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "⭐ Mis Favoritos";
+            mainSubtitle.innerText = "Tus versículos guardados";
+            mainSubtitle.style.display = 'block';
+
+            try {
+                const favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
+                if (favoritos.length === 0) {
+                    contentBox.innerHTML = '<p class="text-center opacity-60 py-10">Aún no tienes versículos guardados como favoritos.</p>';
+                    return;
+                }
+
+                contentBox.innerHTML = favoritos.map((fav, index) => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm space-y-1 shadow-sm border-l-4 border-amber-500 relative">
+                        <div class="font-bold text-amber-600 dark:text-amber-400 flex justify-between">
+                            <span>${fav.book} ${fav.chapter}:${fav.verse}</span>
+                            <button onclick="eliminarFavorito(${index})" class="text-xs text-red-500 hover:underline">Eliminar</button>
+                        </div>
+                        <div class="opacity-90">"${fav.text}"</div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar los marcadores.</p>';
+            }
+        }
+
+        function eliminarFavorito(index) {
+            let favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
+            favoritos.splice(index, 1);
+            localStorage.setItem('bible_favorites', JSON.stringify(favoritos));
+            cargarFavoritos();
+        }
+
+        // BUSCADOR GENERAL
+        function abrirBuscador() {
+            currentView = 'search';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "🔍 Buscador Bíblico";
+            mainSubtitle.innerText = "Busca en Salmos, Proverbios y toda la Biblia";
+            mainSubtitle.style.display = 'block';
+
+            contentBox.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex gap-2">
+                        <input type="text" id="searchInput" placeholder="Ej: amor, fe, Jehová, sabiduría..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl font-semibold text-sm">Buscar</button>
+                    </div>
+                    <div id="search-results" class="space-y-2 mt-4">
+                        <p class="text-center opacity-50 text-sm py-5">Escribe una palabra clave para buscar</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function ejecutarBusqueda() {
+            const query = document.getElementById('searchInput').value.trim();
+            const resultsContainer = document.getElementById('search-results');
+            if (!query) return;
+
+            resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando en Salmos, Proverbios...</div>';
+            try {
+                const { data, error } = await supabaseClient
+                    .from('bible_verses')
+                    .select('chapter, verse, text, bible_books(name, modern_name)')
+                    .ilike('text', `%${query}%`)
+                    .limit(25);
+
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    resultsContainer.innerHTML = '<p class="text-center opacity-60 py-5">No se encontraron resultados.</p>';
+                    return;
+                }
+
+                resultsContainer.innerHTML = data.map(item => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm">
+                        <div class="font-bold text-amber-600 dark:text-amber-400 mb-1">
+                            ${item.bible_books?.modern_name || item.bible_books?.name || 'Libro'} ${item.chapter}:${item.verse}
+                        </div>
+                        <div class="opacity-90">"${item.text}"</div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                resultsContainer.innerHTML = '<p class="text-center text-red-500">Error en la búsqueda.</p>';
+            }
+        }
+
         // --- PLANES DE LECTURA ---
         async function cargarPlanes() {
             currentView = 'plans';
