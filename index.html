@@ -14,6 +14,211 @@
 <body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans">
 
     <div class="max-w-md mx-auto">
+        <!-- CABECERA DINÁMICA CON BOTÓN DE RETROCESO -->
+        <header class="mb-6 flex items-center justify-between">
+            <button id="back-btn" onclick="volverAtras()" class="hidden px-3 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-sm font-medium active:scale-95 transition">
+                ← Volver
+            </button>
+            <div id="header-title" class="text-center flex-1">
+                <h1 class="text-2xl font-bold">📖 Biblia TMA</h1>
+                <p class="text-sm opacity-70">Tu espacio de lectura en Telegram</p>
+            </div>
+            <div class="w-12"></div> <!-- Espaciador para centrar -->
+        </header>
+
+        <!-- CONTENEDOR DE ESTADOS Y VISTAS -->
+        <div id="loading" class="text-center py-10 opacity-60">Cargando contenido...</div>
+        
+        <!-- VISTA 1: Lista de Libros -->
+        <div id="books-container" class="space-y-3"></div>
+
+        <!-- VISTA 2: Lista de Capítulos -->
+        <div id="chapters-container" class="space-y-2 hidden"></div>
+
+        <!-- VISTA 3: Lector de Versículos -->
+        <div id="verses-container" class="space-y-3 hidden"></div>
+    </div>
+
+    <script>
+        // Inicializar Telegram Mini App
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+
+        // Configuración de Supabase
+        const SUPABASE_URL = 'https://bteeppgksogbqozqvzxu.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_DOO_WWtFKHNPgMPmr1dfuA_xQ4BEniF';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Control de historial de vistas ('books', 'chapters', 'verses')
+        let currentView = 'books';
+        let selectedBook = null;
+        let selectedChapter = null;
+
+        const loadingEl = document.getElementById('loading');
+        const booksContainer = document.getElementById('books-container');
+        const chaptersContainer = document.getElementById('chapters-container');
+        const versesContainer = document.getElementById('verses-container');
+        const backBtn = document.getElementById('back-btn');
+        const headerTitle = document.getElementById('header-title');
+
+        // 1. CARGAR LIBROS (Vista Inicial)
+        async function cargarLibros() {
+            currentView = 'books';
+            backBtn.classList.add('hidden');
+            headerTitle.innerHTML = `<h1 class="text-2xl font-bold">📖 Biblia TMA</h1><p class="text-sm opacity-70">Tu espacio de lectura en Telegram</p>`;
+            
+            booksContainer.classList.remove('hidden');
+            chaptersContainer.classList.add('hidden');
+            versesContainer.classList.add('hidden');
+            loadingEl.style.display = 'block';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('bible_books')
+                    .select('*')
+                    .order('book_order', { ascending: true });
+
+                loadingEl.style.display = 'none';
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    booksContainer.innerHTML = '<p class="text-center opacity-60">No hay libros cargados todavía.</p>';
+                    return;
+                }
+
+                booksContainer.innerHTML = data.map(book => `
+                    <div onclick="seleccionarLibro('${book.id}', '${book.name}')" class="flex items-center justify-between p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 active:scale-98 transition cursor-pointer shadow-sm">
+                        <div>
+                            <span class="font-semibold text-base">${book.name}</span>
+                            <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-700 opacity-80">${book.testament}</span>
+                        </div>
+                        <span class="opacity-40 text-lg">›</span>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                loadingEl.innerText = 'Error al cargar los libros.';
+                console.error(err);
+            }
+        }
+
+        // 2. SELECCIONAR LIBRO Y CARGAR CAPÍTULOS
+        async function seleccionarLibro(bookId, bookName) {
+            selectedBook = { id: bookId, name: bookName };
+            currentView = 'chapters';
+            
+            backBtn.classList.remove('hidden');
+            headerTitle.innerHTML = `<h1 class="text-xl font-bold">${bookName}</h1><p class="text-xs opacity-70">Selecciona un capítulo</p>`;
+
+            booksContainer.classList.add('hidden');
+            chaptersContainer.classList.remove('hidden');
+            loadingEl.style.display = 'block';
+            chaptersContainer.innerHTML = '';
+
+            try {
+                // Consulta capítulos de la tabla 'chapters' filtrados por el libro
+                const { data, error } = await supabaseClient
+                    .from('chapters')
+                    .select('*')
+                    .eq('book_id', bookId)
+                    .order('chapter_number', { ascending: true });
+
+                loadingEl.style.display = 'none';
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    chaptersContainer.innerHTML = '<p class="text-center opacity-60">No hay capítulos disponibles para este libro.</p>';
+                    return;
+                }
+
+                // Renderizar en una cuadrícula moderna de capítulos
+                chaptersContainer.innerHTML = `
+                    <div class="grid grid-cols-4 gap-2">
+                        ${data.map(ch => `
+                            <div onclick="seleccionarCapitulo('${ch.id}', ${ch.chapter_number})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center font-semibold active:scale-95 transition cursor-pointer shadow-sm">
+                                ${ch.chapter_number}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+            } catch (err) {
+                loadingEl.innerText = 'Error al cargar los capítulos.';
+                console.error(err);
+            }
+        }
+
+        // 3. SELECCIONAR CAPÍTULO Y CARGAR VERSÍCULOS
+        async function seleccionarCapitulo(chapterId, chapterNumber) {
+            selectedChapter = chapterNumber;
+            currentView = 'verses';
+
+            headerTitle.innerHTML = `<h1 class="text-xl font-bold">${selectedBook.name} - Cap. ${chapterNumber}</h1>`;
+
+            chaptersContainer.classList.add('hidden');
+            versesContainer.classList.remove('hidden');
+            loadingEl.style.display = 'block';
+            versesContainer.innerHTML = '';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('verses')
+                    .select('*')
+                    .eq('chapter_id', chapterId)
+                    .order('verse_number', { ascending: true });
+
+                loadingEl.style.display = 'none';
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    versesContainer.innerHTML = '<p class="text-center opacity-60">No hay versículos en este capítulo.</p>';
+                    return;
+                }
+
+                versesContainer.innerHTML = data.map(v => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 leading-relaxed text-sm">
+                        <span class="font-bold text-xs opacity-60 mr-1">${v.verse_number}</span> ${v.content}
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                loadingEl.innerText = 'Error al cargar los versículos.';
+                console.error(err);
+            }
+        }
+
+        // GESTIÓN DEL BOTÓN VOLVER
+        function volverAtras() {
+            if (currentView === 'verses') {
+                seleccionarLibro(selectedBook.id, selectedBook.name);
+            } else if (currentView === 'chapters') {
+                cargarLibros();
+            }
+        }
+
+        // Arrancar la app cargando los libros iniciales
+        cargarLibros();
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblia TMA</title>
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SDK de Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans">
+
+    <div class="max-w-md mx-auto">
         <header class="mb-6 text-center">
             <h1 class="text-2xl font-bold">📖 Biblia TMA</h1>
             <p class="text-sm opacity-70">Tu espacio de lectura en Telegram</p>
