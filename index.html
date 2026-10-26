@@ -79,6 +79,22 @@
         const mainTitle = document.getElementById('main-title');
         const mainSubtitle = document.getElementById('main-subtitle');
 
+        // FUNCIÓN INTELIGENTE PARA SEPARAR CITAS BÍBLICAS (EJ: "Salmo 23:1-4" o "Proverbios 3:5")
+        function parsearReferenciaBiblica(texto) {
+            if (!texto) return null;
+            // Expresión regular para separar libro, capítulo y versículos
+            // Ejemplo: "Salmo 23:1-4" -> Libro: "Salmo", Capítulo: "23", Versículos: "1-4"
+            const match = texto.match(/^([\w\sáéíóúÁÉÍÓÚñÑ]+?)\s+(\d+)(?::(\d+(?:-\d+)?))?/i);
+            if (!match) {
+                return { libro: texto.trim(), capitulo: null, versiculo: null };
+            }
+            return {
+                libro: match[1].trim(),
+                capitulo: parseInt(match[2]),
+                versiculo: match[3] || null
+            };
+        }
+
         // 1. BIBLIOTECA - LIBROS
         async function cargarLibros() {
             currentView = 'books';
@@ -216,22 +232,22 @@
             cargarFavoritos();
         }
 
-        // --- BUSCADOR BÍBLICO CENTRAL ---
+        // --- BUSCADOR BÍBLICO INTELIGENTE (USA EL PARSER DE CITAS) ---
         function abrirBuscador() {
             currentView = 'search';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "🔍 Buscador Bíblico";
-            mainSubtitle.innerText = "Busca libros o palabras clave";
+            mainSubtitle.innerText = "Busca por libro, cita (ej: Salmo 23:1) o palabras";
             mainSubtitle.style.display = 'block';
 
             contentBox.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex gap-2">
-                        <input type="text" id="searchInput" placeholder="Ej: Proverbios, Romanos, amor..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <input type="text" id="searchInput" placeholder="Ej: Salmo 23, Proverbios 3:5, amor..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
                         <button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                     <div id="search-results" class="space-y-2 mt-4">
-                        <p class="text-center opacity-50 text-sm py-5">Escribe el nombre de un libro o palabra clave</p>
+                        <p class="text-center opacity-50 text-sm py-5">Escribe una cita o palabra clave</p>
                     </div>
                 </div>
             `;
@@ -245,6 +261,42 @@
             resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
             
             try {
+                // Analizar si el usuario escribió una cita estructurada (Ej: Salmo 23:1 o Salmo 23)
+                const parsed = parsearReferenciaBiblica(rawQuery);
+
+                if (parsed && parsed.capitulo) {
+                    // Buscar el libro correspondiente
+                    const { data: matchedBooks } = await supabaseClient
+                        .from('bible_books')
+                        .select('id, name')
+                        .ilike('name', `%${parsed.libro}%`);
+
+                    if (matchedBooks && matchedBooks.length > 0) {
+                        const bookIds = matchedBooks.map(b => b.id);
+                        let query = supabaseClient
+                            .from('bible_verses')
+                            .select('chapter, verse, text, bible_books(name, modern_name)')
+                            .in('book_id', bookIds)
+                            .eq('chapter', parsed.capitulo);
+
+                        if (parsed.versiculo) {
+                            if (parsed.versiculo.includes('-')) {
+                                const [startV, endV] = parsed.versiculo.split('-').map(Number);
+                                query = query.gte('verse', startV).lte('verse', endV);
+                            } else {
+                                query = query.eq('verse', parseInt(parsed.versiculo));
+                            }
+                        }
+
+                        const { data: verseData } = await query.limit(30);
+                        if (verseData && verseData.length > 0) {
+                            mostrarResultadosBusqueda(verseData, resultsContainer, rawQuery);
+                            return;
+                        }
+                    }
+                }
+
+                // Búsqueda estándar por coincidencia de libro o palabra clave en texto
                 const { data: matchedBooks } = await supabaseClient
                     .from('bible_books')
                     .select('id, name, modern_name')
@@ -256,8 +308,6 @@
                         .from('bible_verses')
                         .select('chapter, verse, text, bible_books(name, modern_name)')
                         .in('book_id', bookIds)
-                        .order('chapter', { ascending: true })
-                        .order('verse', { ascending: true })
                         .limit(30);
 
                     mostrarResultadosBusqueda(verseData, resultsContainer, rawQuery);
@@ -294,7 +344,7 @@
             `).join('');
         }
 
-        // --- BUSCADOR DE PLANES DE LECTURA MEJORADO ---
+        // --- PLANES DE LECTURA ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -306,7 +356,7 @@
                 <div class="space-y-2 mb-3">
                     <button onclick="mostrarFormularioCrearPlan()" class="w-full py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition shadow-sm">+ Crear Nuevo Plan</button>
                     <div class="flex gap-2">
-                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar por título o pasaje..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar planes de lectura..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
                         <button onclick="ejecutarBusquedaPlanes()" class="px-4 py-2 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                 </div>
@@ -357,30 +407,13 @@
                 return;
             }
 
-            listContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando en planes...</div>';
+            listContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando planes...</div>';
 
             try {
-                // 1. Filtrar localmente en caché por título o descripción
                 let matchedPlans = allPlansCache.filter(p => 
                     (p.title && p.title.toLowerCase().includes(query)) || 
                     (p.description && p.description.toLowerCase().includes(query))
                 );
-
-                // 2. Buscar en Supabase dentro de los pasajes de los días asociados a los planes
-                const { data: daysData } = await supabaseClient
-                    .from('reading_plan_days')
-                    .select('plan_id')
-                    .ilike('passage', `%${query}%`);
-
-                if (daysData && daysData.length > 0) {
-                    const planIdsFromDays = [...new Set(daysData.map(d => d.plan_id))];
-                    const extraPlans = allPlansCache.filter(p => planIdsFromDays.includes(p.id));
-                    
-                    const idsMap = new Set(matchedPlans.map(p => p.id));
-                    extraPlans.forEach(p => {
-                        if (!idsMap.has(p.id)) matchedPlans.push(p);
-                    });
-                }
 
                 renderizarPlanes(matchedPlans);
             } catch (err) {
@@ -419,8 +452,8 @@
                         <input type="time" id="newPlanTime" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm">
                     </div>
                     <div>
-                        <label class="text-xs font-semibold opacity-70">Días del plan (Ej: Día 1: Paz | Proverbios 3:5-6)</label>
-                        <textarea id="newPlanDays" placeholder="Día 1 - Título | Proverbios 3:5-6&#10;Día 2 - Título | Filipenses 4:6-7" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
+                        <label class="text-xs font-semibold opacity-70">Días del plan (Ej: Día 1: Paz | Salmo 23:1-4)</label>
+                        <textarea id="newPlanDays" placeholder="Día 1 - Título | Salmo 23:1-4&#10;Día 2 - Título | Proverbios 3:5-6" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
                     </div>
                     <button onclick="guardarNuevoPlan()" class="w-full py-2.5 bg-green-600 text-white rounded-lg font-semibold text-sm active:scale-95 transition">Guardar Plan en Base de Datos</button>
                 </div>
