@@ -26,7 +26,7 @@
             <div class="w-12"></div>
         </header>
 
-        <!-- BARRA DE NAVEGACIÓN RÁPIDA (5 MÓDULOS) -->
+        <!-- BARRA DE NAVEGACIÓN RÁPIDA -->
         <nav class="grid grid-cols-5 gap-1 mb-5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-center text-xs font-medium">
             <button onclick="cargarLibros()" class="py-2 rounded-lg bg-zinc-200 dark:bg-zinc-700 transition">📖 Biblia</button>
             <button onclick="abrirBuscador()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">🔍 Buscar</button>
@@ -51,8 +51,9 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_DOO_WWtFKHNPgMPmr1dfuA_xQ4BEniF';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let currentView = 'books'; // 'books', 'chapters', 'verses', 'search', 'plans', 'prayer', 'trivia'
+        let currentView = 'books'; // 'books', 'chapters', 'verses', 'search', 'plans', 'plan_detail', 'prayer', 'trivia'
         let selectedBook = null;
+        let selectedPlan = null;
         let currentUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'usuario_demo_123';
 
         const contentBox = document.getElementById('content-box');
@@ -141,7 +142,7 @@
             }
         }
 
-        // 3. CARGAR VERSÍCULOS + BOTÓN DE MARCADOR ⭐
+        // 3. CARGAR VERSÍCULOS + MARCADOR ⭐
         async function seleccionarCapitulo(chapterNumber) {
             currentView = 'verses';
 
@@ -181,7 +182,7 @@
             }
         }
 
-        // --- MÓDULO 1: BUSCADOR INTELIGENTE DE VERSÍCULOS ---
+        // --- BUSCADOR INTELIGENTE ---
         function abrirBuscador() {
             currentView = 'search';
             backBtn.classList.add('hidden');
@@ -212,15 +213,7 @@
             try {
                 const { data, error } = await supabaseClient
                     .from('bible_verses')
-                    .select(`
-                        chapter,
-                        verse,
-                        text,
-                        bible_books (
-                            name,
-                            modern_name
-                        )
-                    `)
+                    .select('chapter, verse, text, bible_books(name, modern_name)')
                     .ilike('text', `%${query}%`)
                     .limit(25);
 
@@ -246,7 +239,7 @@
             }
         }
 
-        // --- MÓDULO 2: MARCADORES ---
+        // --- MARCADORES ---
         async function guardarMarcador(bookId, chapter, verse) {
             try {
                 const { error } = await supabaseClient
@@ -261,7 +254,7 @@
             }
         }
 
-        // --- MÓDULO 3: PLANES DE LECTURA ---
+        // --- PLANES DE LECTURA ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -281,9 +274,10 @@
                 }
 
                 contentBox.innerHTML = data.map(plan => `
-                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm">
-                        <h3 class="font-bold text-base">${plan.title || plan.name || 'Plan Devocional'}</h3>
-                        <p class="text-xs opacity-70">${plan.description || 'Sigue este recorrido paso a paso.'}</p>
+                    <div onclick="verDetallePlan('${plan.id}', '${plan.title}')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition">
+                        <h3 class="font-bold text-base">${plan.title}</h3>
+                        <p class="text-xs opacity-70">${plan.description}</p>
+                        <span class="text-xs text-amber-500 font-semibold inline-block mt-2">Ver días del plan →</span>
                     </div>
                 `).join('');
             } catch (err) {
@@ -292,7 +286,45 @@
             }
         }
 
-        // --- MÓDULO 4: PETICIONES DE ORACIÓN ---
+        async function verDetallePlan(planId, planTitle) {
+            currentView = 'plan_detail';
+            backBtn.classList.remove('hidden');
+            selectedPlan = planTitle;
+            mainTitle.innerText = planTitle;
+            mainSubtitle.innerText = "Días del devocional";
+
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando días del plan...</div>';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('reading_plan_days')
+                    .select('*')
+                    .eq('plan_id', planId)
+                    .order('day_number', { ascending: true });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">Este plan aún no tiene días cargados.</p>';
+                    return;
+                }
+
+                contentBox.innerHTML = data.map(d => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 flex justify-between items-center text-sm">
+                        <div>
+                            <span class="font-bold text-amber-500 mr-2">Día ${d.day_number}</span>
+                            <span class="font-semibold">${d.title}</span>
+                            <div class="text-xs opacity-70 mt-0.5">Lectura: ${d.passage}</div>
+                        </div>
+                        <button onclick="alert('¡Día marcado como completado! 🎉')" class="px-2.5 py-1 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium">Completar</button>
+                    </div>
+                `).join('');
+            } catch (err) {
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar detalle del plan.</p>';
+            }
+        }
+
+        // --- PETICIONES DE ORACIÓN ---
         async function cargarOraciones() {
             currentView = 'prayer';
             backBtn.classList.add('hidden');
@@ -360,7 +392,7 @@
             }
         }
 
-        // --- MÓDULO 5: TRIVIA BÍBLICA ---
+        // --- TRIVIA BÍBLICA INTERACTIVA ---
         async function cargarTrivia() {
             currentView = 'trivia';
             backBtn.classList.add('hidden');
@@ -368,10 +400,10 @@
             mainSubtitle.innerText = "Pon a prueba tus conocimientos";
             mainSubtitle.style.display = 'block';
 
-            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando preguntas de trivia...</div>';
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando preguntas...</div>';
 
             try {
-                const { data, error } = await supabaseClient.from('trivia_questions').select('*').limit(10);
+                const { data, error } = await supabaseClient.from('trivia_questions').select('*');
                 if (error) throw error;
 
                 if (!data || data.length === 0) {
@@ -380,9 +412,15 @@
                 }
 
                 contentBox.innerHTML = data.map((q, idx) => `
-                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 mb-3 shadow-sm">
-                        <p class="font-semibold text-sm">${idx + 1}. ${q.question_text || q.question || 'Pregunta bíblica'}</p>
-                        <div class="text-xs opacity-70 italic">Respuesta: ${q.correct_answer || q.answer || 'Disponible pronto'}</div>
+                    <div id="question_box_${q.id}" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 mb-3 shadow-sm">
+                        <p class="font-semibold text-sm">${idx + 1}. ${q.question_text}</p>
+                        <div class="grid grid-cols-1 gap-2">
+                            <button onclick="responderTrivia(${q.id}, 'A', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">A) ${q.option_a}</button>
+                            <button onclick="responderTrivia(${q.id}, 'B', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">B) ${q.option_b}</button>
+                            <button onclick="responderTrivia(${q.id}, 'C', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">C) ${q.option_c}</button>
+                            <button onclick="responderTrivia(${q.id}, 'D', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">D) ${q.option_d}</button>
+                        </div>
+                        <div id="trivia_feedback_${q.id}" class="text-xs font-bold pt-1"></div>
                     </div>
                 `).join('');
             } catch (err) {
@@ -391,12 +429,27 @@
             }
         }
 
-        // BOTÓN VOLVER GENERAL
+        function responderTrivia(qId, selectedOption, correctOption) {
+            const feedbackBox = document.getElementById(`trivia_feedback_${qId}`);
+            const buttons = document.querySelectorAll(`.option_btn_${qId}`);
+
+            buttons.forEach(btn => btn.disabled = true);
+
+            if (selectedOption === correctOption) {
+                feedbackBox.innerHTML = '<span class="text-green-500">✨ ¡Respuesta Correcta!</span>';
+            } else {
+                feedbackBox.innerHTML = `<span class="text-red-500">❌ Incorrecto. La opción correcta era la ${correctOption}</span>`;
+            }
+        }
+
+        // --- BOTÓN VOLVER GENERAL ---
         function volverAtras() {
             if (currentView === 'verses') {
                 seleccionarLibro(selectedBook.id, selectedBook.name);
             } else if (currentView === 'chapters') {
                 cargarLibros();
+            } else if (currentView === 'plan_detail') {
+                cargarPlanes();
             }
         }
 
