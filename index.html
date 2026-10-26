@@ -216,12 +216,12 @@
             cargarFavoritos();
         }
 
-        // --- BUSCADOR CENTRAL ROBUSTO Y PERFECTO ---
+        // --- BUSCADOR BÍBLICO CENTRAL ---
         function abrirBuscador() {
             currentView = 'search';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "🔍 Buscador Bíblico";
-            mainSubtitle.innerText = "Busca libros (ej: Proverbios, Romanos) o palabras";
+            mainSubtitle.innerText = "Busca libros o palabras clave";
             mainSubtitle.style.display = 'block';
 
             contentBox.innerHTML = `
@@ -245,15 +245,14 @@
             resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
             
             try {
-                // 1. Verificar si el texto coincide exactamente o parcialmente con un libro de la Biblia
-                const { data: matchedBooks, error: bookError } = await supabaseClient
+                const { data: matchedBooks } = await supabaseClient
                     .from('bible_books')
                     .select('id, name, modern_name')
                     .ilike('name', `%${rawQuery}%`);
 
                 if (matchedBooks && matchedBooks.length > 0) {
                     const bookIds = matchedBooks.map(b => b.id);
-                    const { data: verseData, error: verseError } = await supabaseClient
+                    const { data: verseData } = await supabaseClient
                         .from('bible_verses')
                         .select('chapter, verse, text, bible_books(name, modern_name)')
                         .in('book_id', bookIds)
@@ -261,19 +260,16 @@
                         .order('verse', { ascending: true })
                         .limit(30);
 
-                    if (verseError) throw verseError;
                     mostrarResultadosBusqueda(verseData, resultsContainer, rawQuery);
                     return;
                 }
 
-                // 2. Si no es un libro, buscar por palabra clave dentro del texto de los versículos
-                const { data: textData, error: textError } = await supabaseClient
+                const { data: textData } = await supabaseClient
                     .from('bible_verses')
                     .select('chapter, verse, text, bible_books(name, modern_name)')
                     .ilike('text', `%${rawQuery}%`)
                     .limit(30);
 
-                if (textError) throw textError;
                 mostrarResultadosBusqueda(textData, resultsContainer, rawQuery);
 
             } catch (err) {
@@ -298,7 +294,7 @@
             `).join('');
         }
 
-        // --- PLANES DE LECTURA ---
+        // --- BUSCADOR DE PLANES DE LECTURA MEJORADO ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -310,7 +306,7 @@
                 <div class="space-y-2 mb-3">
                     <button onclick="mostrarFormularioCrearPlan()" class="w-full py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition shadow-sm">+ Crear Nuevo Plan</button>
                     <div class="flex gap-2">
-                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar planes o pasajes..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar por título o pasaje..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
                         <button onclick="ejecutarBusquedaPlanes()" class="px-4 py-2 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                 </div>
@@ -361,14 +357,16 @@
                 return;
             }
 
-            listContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando en planes y pasajes...</div>';
+            listContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando en planes...</div>';
 
             try {
+                // 1. Filtrar localmente en caché por título o descripción
                 let matchedPlans = allPlansCache.filter(p => 
                     (p.title && p.title.toLowerCase().includes(query)) || 
                     (p.description && p.description.toLowerCase().includes(query))
                 );
 
+                // 2. Buscar en Supabase dentro de los pasajes de los días asociados a los planes
                 const { data: daysData } = await supabaseClient
                     .from('reading_plan_days')
                     .select('plan_id')
@@ -387,7 +385,7 @@
                 renderizarPlanes(matchedPlans);
             } catch (err) {
                 console.error(err);
-                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al realizar la búsqueda.</p>';
+                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al buscar en los planes.</p>';
             }
         }
 
