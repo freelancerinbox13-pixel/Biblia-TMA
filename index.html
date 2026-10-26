@@ -79,11 +79,9 @@
         const mainTitle = document.getElementById('main-title');
         const mainSubtitle = document.getElementById('main-subtitle');
 
-        // FUNCIÓN INTELIGENTE PARA SEPARAR CITAS BÍBLICAS (EJ: "Salmo 23:1-4" o "Proverbios 3:5")
+        // FUNCIÓN INTELIGENTE PARA SEPARAR CITAS BÍBLICAS
         function parsearReferenciaBiblica(texto) {
             if (!texto) return null;
-            // Expresión regular para separar libro, capítulo y versículos
-            // Ejemplo: "Salmo 23:1-4" -> Libro: "Salmo", Capítulo: "23", Versículos: "1-4"
             const match = texto.match(/^([\w\sáéíóúÁÉÍÓÚñÑ]+?)\s+(\d+)(?::(\d+(?:-\d+)?))?/i);
             if (!match) {
                 return { libro: texto.trim(), capitulo: null, versiculo: null };
@@ -232,18 +230,18 @@
             cargarFavoritos();
         }
 
-        // --- BUSCADOR BÍBLICO INTELIGENTE (USA EL PARSER DE CITAS) ---
+        // --- BUSCADOR BÍBLICO INTELIGENTE ---
         function abrirBuscador() {
             currentView = 'search';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "🔍 Buscador Bíblico";
-            mainSubtitle.innerText = "Busca por libro, cita (ej: Salmo 23:1) o palabras";
+            mainSubtitle.innerText = "Busca por libro, cita o palabras";
             mainSubtitle.style.display = 'block';
 
             contentBox.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex gap-2">
-                        <input type="text" id="searchInput" placeholder="Ej: Salmo 23, Proverbios 3:5, amor..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <input type="text" id="searchInput" placeholder="Ej: Salmo 23, Proverbios 3:5..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
                         <button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                     <div id="search-results" class="space-y-2 mt-4">
@@ -261,11 +259,9 @@
             resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
             
             try {
-                // Analizar si el usuario escribió una cita estructurada (Ej: Salmo 23:1 o Salmo 23)
                 const parsed = parsearReferenciaBiblica(rawQuery);
 
                 if (parsed && parsed.capitulo) {
-                    // Buscar el libro correspondiente
                     const { data: matchedBooks } = await supabaseClient
                         .from('bible_books')
                         .select('id, name')
@@ -296,7 +292,6 @@
                     }
                 }
 
-                // Búsqueda estándar por coincidencia de libro o palabra clave en texto
                 const { data: matchedBooks } = await supabaseClient
                     .from('bible_books')
                     .select('id, name, modern_name')
@@ -671,18 +666,30 @@
             }
         }
 
-        // --- TRIVIA ---
+        // --- TRIVIA CON SISTEMA DE RECOMPENSAS (⭐ Estrellas / Puntuación) ---
+        let triviaScore = 0;
+        let triviaAnsweredCount = 0;
+
         async function cargarTrivia() {
             currentView = 'trivia';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "❓ Trivia Bíblica";
-            mainSubtitle.innerText = "Banco de preguntas aleatorias";
+            mainSubtitle.innerText = "Pon a prueba tus conocimientos";
             mainSubtitle.style.display = 'block';
+            triviaScore = 0;
+            triviaAnsweredCount = 0;
 
             contentBox.innerHTML = `
-                <div class="mb-4">
-                    <button onclick="cargarTrivia()" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-sm shadow-md active:scale-95 transition flex items-center justify-center gap-2">
-                        🔄 Nueva Partida / Mezclar Preguntas
+                <div class="flex items-center justify-between bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">⭐</span>
+                        <div>
+                            <div class="text-xs font-semibold opacity-70">Puntuación</div>
+                            <div id="trivia-score-display" class="text-base font-bold text-amber-500">0 Aciertos</div>
+                        </div>
+                    </div>
+                    <button onclick="cargarTrivia()" class="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shadow-sm active:scale-95 transition">
+                        🔄 Reiniciar
                     </button>
                 </div>
                 <div id="trivia-questions-container" class="space-y-3">
@@ -729,11 +736,30 @@
 
             if (selectedOption === correctOption) {
                 selectedBtn.classList.add('bg-green-500/20', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
-                feedbackBox.innerHTML = '<span class="text-green-500">✨ ¡Respuesta Correcta!</span>';
+                feedbackBox.innerHTML = '<span class="text-green-500">✨ ¡Respuesta Correcta! (+1 ⭐)</span>';
+                triviaScore++;
             } else {
                 selectedBtn.classList.add('bg-red-500/20', 'border', 'border-red-500', 'text-red-600', 'dark:text-red-400');
                 correctBtn.classList.add('bg-green-500/20', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
                 feedbackBox.innerHTML = `<span class="text-red-500">❌ Incorrecto. La opción correcta era la ${correctOption}</span>`;
+            }
+
+            triviaAnsweredCount++;
+            document.getElementById('trivia-score-display').innerText = `${triviaScore} Aciertos`;
+
+            // Si ya respondió todas las preguntas de la partida, mostrar mensaje de felicitación con copa/cáliz 🍷
+            if (triviaAnsweredCount === 5) {
+                setTimeout(() => {
+                    const container = document.getElementById('content-box');
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/40 text-center space-y-2 mt-4 animate-fade-in">
+                            <div class="text-2xl">🍷✨</div>
+                            <h3 class="font-bold text-base text-amber-600 dark:text-amber-400">¡Partida Finalizada!</h3>
+                            <p class="text-xs opacity-80">Has conseguido ${triviaScore} de 5 aciertos en esta ronda.</p>
+                            <button onclick="cargarTrivia()" class="mt-2 px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition">Jugar otra vez</button>
+                        </div>
+                    `);
+                }, 500);
             }
         }
 
