@@ -64,7 +64,7 @@
                 const { data, error } = await supabaseClient
                     .from('bible_books')
                     .select('*')
-                    .order('book_order', { ascending: true });
+                    .order('id', { ascending: true });
 
                 if (error) throw error;
 
