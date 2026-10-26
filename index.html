@@ -11,11 +11,11 @@
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans">
+<body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans pb-20">
 
     <div class="max-w-md mx-auto">
         <!-- CABECERA ÚNICA -->
-        <header class="mb-6 flex items-center justify-between">
+        <header class="mb-4 flex items-center justify-between">
             <button id="back-btn" onclick="volverAtras()" class="hidden px-3 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-sm font-medium active:scale-95 transition">
                 ← Volver
             </button>
@@ -25,6 +25,15 @@
             </div>
             <div class="w-12"></div>
         </header>
+
+        <!-- BARRA DE NAVEGACIÓN RÁPIDA (5 MÓDULOS) -->
+        <nav class="grid grid-cols-5 gap-1 mb-5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-center text-xs font-medium">
+            <button onclick="cargarLibros()" class="py-2 rounded-lg bg-zinc-200 dark:bg-zinc-700 transition">📖 Biblia</button>
+            <button onclick="abrirBuscador()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">🔍 Buscar</button>
+            <button onclick="cargarPlanes()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">📅 Planes</button>
+            <button onclick="cargarOraciones()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">🙏 Oración</button>
+            <button onclick="cargarTrivia()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">❓ Trivia</button>
+        </nav>
 
         <!-- ÚNICO CONTENEDOR DE DATOS -->
         <div id="content-box" class="space-y-3">
@@ -42,8 +51,9 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_DOO_WWtFKHNPgMPmr1dfuA_xQ4BEniF';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let currentView = 'books'; // 'books', 'chapters', 'verses'
+        let currentView = 'books'; // 'books', 'chapters', 'verses', 'search', 'plans', 'prayer', 'trivia'
         let selectedBook = null;
+        let currentUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'usuario_demo_123';
 
         const contentBox = document.getElementById('content-box');
         const backBtn = document.getElementById('back-btn');
@@ -77,7 +87,7 @@
                     <div onclick="seleccionarLibro('${book.id}', '${book.name}')" class="flex items-center justify-between p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 active:scale-98 transition cursor-pointer shadow-sm">
                         <div>
                             <span class="font-semibold text-base">${book.name}</span>
-                            <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-700 opacity-80">${book.testament}</span>
+                            <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-700 opacity-80">${book.testament || ''}</span>
                         </div>
                         <span class="opacity-40 text-lg">›</span>
                     </div>
@@ -131,7 +141,7 @@
             }
         }
 
-        // 3. CARGAR VERSÍCULOS
+        // 3. CARGAR VERSÍCULOS + BOTÓN DE MARCADOR ⭐
         async function seleccionarCapitulo(chapterNumber) {
             currentView = 'verses';
 
@@ -157,8 +167,11 @@
                 }
 
                 contentBox.innerHTML = data.map(v => `
-                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 leading-relaxed text-sm">
-                        <span class="font-bold text-xs opacity-60 mr-1">${v.verse}</span> ${v.text}
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 leading-relaxed text-sm flex justify-between items-start gap-2">
+                        <div>
+                            <span class="font-bold text-xs opacity-60 mr-1">${v.verse}</span> ${v.text}
+                        </div>
+                        <button onclick="guardarMarcador('${selectedBook.id}', ${chapterNumber}, ${v.verse})" class="text-xs opacity-50 hover:opacity-100 transition px-1.5 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded" title="Guardar marcador">⭐</button>
                     </div>
                 `).join('');
 
@@ -168,7 +181,217 @@
             }
         }
 
-        // BOTÓN VOLVER
+        // --- MÓDULO 1: BUSCADOR INTELIGENTE DE VERSÍCULOS ---
+        function abrirBuscador() {
+            currentView = 'search';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "🔍 Buscador Bíblico";
+            mainSubtitle.innerText = "Encuentra citas y textos exactos";
+            mainSubtitle.style.display = 'block';
+
+            contentBox.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex gap-2">
+                        <input type="text" id="searchInput" placeholder="Ej: principio, amor, fe..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl font-semibold text-sm active:scale-95 transition">Buscar</button>
+                    </div>
+                    <div id="search-results" class="space-y-2 mt-4">
+                        <p class="text-center opacity-50 text-sm py-5">Escribe una palabra clave para buscar</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function ejecutarBusqueda() {
+            const query = document.getElementById('searchInput').value.trim();
+            const resultsContainer = document.getElementById('search-results');
+            if (!query) return;
+
+            resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando en la Biblia...</div>';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('bible_verses')
+                    .select(`
+                        chapter,
+                        verse,
+                        text,
+                        bible_books (
+                            name,
+                            modern_name
+                        )
+                    `)
+                    .ilike('text', `%${query}%`)
+                    .limit(25);
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    resultsContainer.innerHTML = '<p class="text-center opacity-60 py-5">No se encontraron versículos con esa frase.</p>';
+                    return;
+                }
+
+                resultsContainer.innerHTML = data.map(item => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm">
+                        <div class="font-bold text-amber-600 dark:text-amber-400 mb-1">
+                            ${item.bible_books?.modern_name || item.bible_books?.name || 'Libro'} ${item.chapter}:${item.verse}
+                        </div>
+                        <div class="opacity-90">"${item.text}"</div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error(err);
+                resultsContainer.innerHTML = '<p class="text-center text-red-500">Error al realizar la búsqueda.</p>';
+            }
+        }
+
+        // --- MÓDULO 2: MARCADORES ---
+        async function guardarMarcador(bookId, chapter, verse) {
+            try {
+                const { error } = await supabaseClient
+                    .from('user_bookmarks')
+                    .insert([{ user_id: currentUserId, book_id: bookId, chapter: chapter, verse: verse }]);
+
+                if (error) throw error;
+                alert("⭐ Versículo guardado en tus marcadores.");
+            } catch (err) {
+                console.error(err);
+                alert("Error al guardar el marcador.");
+            }
+        }
+
+        // --- MÓDULO 3: PLANES DE LECTURA ---
+        async function cargarPlanes() {
+            currentView = 'plans';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "📅 Planes de Lectura";
+            mainSubtitle.innerText = "Devocionales guiados";
+            mainSubtitle.style.display = 'block';
+
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando planes...</div>';
+
+            try {
+                const { data, error } = await supabaseClient.from('reading_plans').select('*');
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">No hay planes de lectura disponibles.</p>';
+                    return;
+                }
+
+                contentBox.innerHTML = data.map(plan => `
+                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm">
+                        <h3 class="font-bold text-base">${plan.title || plan.name || 'Plan Devocional'}</h3>
+                        <p class="text-xs opacity-70">${plan.description || 'Sigue este recorrido paso a paso.'}</p>
+                    </div>
+                `).join('');
+            } catch (err) {
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar los planes.</p>';
+                console.error(err);
+            }
+        }
+
+        // --- MÓDULO 4: PETICIONES DE ORACIÓN ---
+        async function cargarOraciones() {
+            currentView = 'prayer';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "🙏 Peticiones de Oración";
+            mainSubtitle.innerText = "Espacio de intercesión comunitaria";
+            mainSubtitle.style.display = 'block';
+
+            contentBox.innerHTML = `
+                <div class="space-y-4">
+                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2">
+                        <textarea id="prayerInput" placeholder="Escribe tu petición de oración..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
+                        <button onclick="enviarOracion()" class="w-full py-2.5 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-lg font-semibold text-sm active:scale-95 transition">Compartir Petición</button>
+                    </div>
+                    <div id="prayer-list" class="space-y-2">
+                        <div class="text-center py-6 opacity-65">Cargando peticiones...</div>
+                    </div>
+                </div>
+            `;
+            obtenerListaOraciones();
+        }
+
+        async function obtenerListaOraciones() {
+            const listContainer = document.getElementById('prayer-list');
+            try {
+                const { data, error } = await supabaseClient
+                    .from('prayer_requests')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    listContainer.innerHTML = '<p class="text-center opacity-60 py-4">No hay peticiones registradas aún.</p>';
+                    return;
+                }
+
+                listContainer.innerHTML = data.map(p => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm">
+                        <p class="opacity-90">${p.request_text || p.text || ''}</p>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al cargar las oraciones.</p>';
+            }
+        }
+
+        async function enviarOracion() {
+            const text = document.getElementById('prayerInput').value.trim();
+            if (!text) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('prayer_requests')
+                    .insert([{ user_id: currentUserId, request_text: text, is_public: true }]);
+
+                if (error) throw error;
+                document.getElementById('prayerInput').value = '';
+                alert("🙏 Petición enviada con éxito.");
+                obtenerListaOraciones();
+            } catch (err) {
+                console.error(err);
+                alert("No se pudo enviar la petición.");
+            }
+        }
+
+        // --- MÓDULO 5: TRIVIA BÍBLICA ---
+        async function cargarTrivia() {
+            currentView = 'trivia';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "❓ Trivia Bíblica";
+            mainSubtitle.innerText = "Pon a prueba tus conocimientos";
+            mainSubtitle.style.display = 'block';
+
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando preguntas de trivia...</div>';
+
+            try {
+                const { data, error } = await supabaseClient.from('trivia_questions').select('*').limit(10);
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">No hay preguntas de trivia disponibles.</p>';
+                    return;
+                }
+
+                contentBox.innerHTML = data.map((q, idx) => `
+                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 mb-3 shadow-sm">
+                        <p class="font-semibold text-sm">${idx + 1}. ${q.question_text || q.question || 'Pregunta bíblica'}</p>
+                        <div class="text-xs opacity-70 italic">Respuesta: ${q.correct_answer || q.answer || 'Disponible pronto'}</div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar la trivia.</p>';
+                console.error(err);
+            }
+        }
+
+        // BOTÓN VOLVER GENERAL
         function volverAtras() {
             if (currentView === 'verses') {
                 seleccionarLibro(selectedBook.id, selectedBook.name);
@@ -177,7 +400,7 @@
             }
         }
 
-        // Iniciar
+        // Iniciar app en la vista principal de libros
         cargarLibros();
     </script>
 </body>
