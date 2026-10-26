@@ -30,17 +30,19 @@
             window.Telegram.WebApp.expand();
         }
 
-        // Configuración de Supabase (reemplaza con tus credenciales)
+        // Configuración de Supabase
         const SUPABASE_URL = 'https://bteeppgksogbqozqvzxu.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_DOO_WWtFKHNPgMPmr1dfuA_xQ4BEniF';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Inicialización segura del cliente sin conflictos
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         async function cargarLibros() {
             const container = document.getElementById('books-container');
             const loading = document.getElementById('loading');
 
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('bible_books')
                     .select('*')
                     .order('book_order', { ascending: true });
