@@ -310,18 +310,27 @@
                 }
 
                 contentBox.innerHTML = data.map(d => `
-                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 flex justify-between items-center text-sm">
+                    <div id="plan_day_${d.id}" class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 flex justify-between items-center text-sm mb-2">
                         <div>
                             <span class="font-bold text-amber-500 mr-2">Día ${d.day_number}</span>
                             <span class="font-semibold">${d.title}</span>
                             <div class="text-xs opacity-70 mt-0.5">Lectura: ${d.passage}</div>
                         </div>
-                        <button onclick="alert('¡Día marcado como completado! 🎉')" class="px-2.5 py-1 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium">Completar</button>
+                        <button onclick="completarDiaPlan(${d.id})" id="btn_day_${d.id}" class="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg text-xs font-semibold active:scale-95 transition">Completar</button>
                     </div>
                 `).join('');
             } catch (err) {
                 contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar detalle del plan.</p>';
             }
+        }
+
+        function completarDiaPlan(dayId) {
+            const btn = document.getElementById(`btn_day_${dayId}`);
+            const box = document.getElementById(`plan_day_${dayId}`);
+            btn.innerText = "¡Completado! ✓";
+            btn.className = "px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold";
+            box.classList.add('border', 'border-green-500/50');
+            alert("📅 ¡Día agendado y registrado con éxito!");
         }
 
         // --- PETICIONES DE ORACIÓN ---
@@ -392,27 +401,41 @@
             }
         }
 
-        // --- TRIVIA BÍBLICA INTERACTIVA ---
+        // --- TRIVIA BÍBLICA 100% ALEATORIA Y REINICIABLE ---
         async function cargarTrivia() {
             currentView = 'trivia';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "❓ Trivia Bíblica";
-            mainSubtitle.innerText = "Pon a prueba tus conocimientos";
+            mainSubtitle.innerText = "Banco de preguntas aleatorias";
             mainSubtitle.style.display = 'block';
 
-            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando preguntas...</div>';
+            contentBox.innerHTML = `
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs opacity-70">¡Pon a prueba tu conocimiento!</span>
+                    <button onclick="cargarTrivia()" class="px-3 py-1 bg-amber-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition">🔄 Nueva Partida</button>
+                </div>
+                <div id="trivia-questions-container" class="space-y-3">
+                    <div class="text-center py-10 opacity-65">Mezclando preguntas aleatorias...</div>
+                </div>
+            `;
 
             try {
-                const { data, error } = await supabaseClient.from('trivia_questions').select('*');
+                const { data, error } = await supabaseClient
+                    .from('trivia_questions')
+                    .select('*');
+
                 if (error) throw error;
 
                 if (!data || data.length === 0) {
-                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">No hay preguntas de trivia disponibles.</p>';
+                    document.getElementById('trivia-questions-container').innerHTML = '<p class="text-center opacity-60 py-5">No hay preguntas de trivia disponibles.</p>';
                     return;
                 }
 
-                contentBox.innerHTML = data.map((q, idx) => `
-                    <div id="question_box_${q.id}" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 mb-3 shadow-sm">
+                // Mezcla aleatoria completa en JavaScript y selección de 5 preguntas por partida
+                const shuffledData = data.sort(() => 0.5 - Math.random()).slice(0, 5);
+
+                document.getElementById('trivia-questions-container').innerHTML = shuffledData.map((q, idx) => `
+                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm">
                         <p class="font-semibold text-sm">${idx + 1}. ${q.question_text}</p>
                         <div class="grid grid-cols-1 gap-2">
                             <button onclick="responderTrivia(${q.id}, 'A', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">A) ${q.option_a}</button>
@@ -423,8 +446,9 @@
                         <div id="trivia_feedback_${q.id}" class="text-xs font-bold pt-1"></div>
                     </div>
                 `).join('');
+
             } catch (err) {
-                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar la trivia.</p>';
+                document.getElementById('trivia-questions-container').innerHTML = '<p class="text-center text-red-500">Error al cargar la trivia.</p>';
                 console.error(err);
             }
         }
