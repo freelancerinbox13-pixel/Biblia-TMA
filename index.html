@@ -139,7 +139,7 @@
             }
         }
 
-        // 3. VERSÍCULOS + MARCADOR ⭐ (Guardado seguro en LocalStorage)
+        // 3. VERSÍCULOS + MARCADOR ⭐
         async function seleccionarCapitulo(chapterNumber) {
             currentView = 'verses';
             backBtn.classList.remove('hidden');
@@ -166,7 +166,6 @@
         function guardarMarcador(bookName, chapter, verse, text) {
             try {
                 let favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
-                // Evitar duplicados
                 const existe = favoritos.some(f => f.book === bookName && f.chapter === chapter && f.verse === verse);
                 if (!existe) {
                     favoritos.push({ book: bookName, chapter, verse, text });
@@ -181,7 +180,6 @@
             }
         }
 
-        // CARGAR FAVORITOS DESDE LOCALSTORAGE
         function cargarFavoritos() {
             currentView = 'favorites';
             backBtn.classList.add('hidden');
@@ -270,7 +268,7 @@
             }
         }
 
-        // --- PLANES DE LECTURA CON OPCIÓN DE CREAR PLAN ---
+        // --- PLANES DE LECTURA CON FECHAS Y CREACIÓN ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -300,7 +298,8 @@
                 listContainer.innerHTML = data.map(plan => `
                     <div onclick="verDetallePlan('${plan.id}', '${plan.title}')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition">
                         <h3 class="font-bold text-base">${plan.title}</h3>
-                        <p class="text-xs opacity-70">${plan.description}</p>
+                        <p class="text-xs opacity-70">${plan.description || ''}</p>
+                        ${plan.start_date && plan.end_date ? `<div class="text-xs text-amber-500 font-medium mt-1">🗓️ ${plan.start_date} al ${plan.end_date}</div>` : ''}
                         <span class="text-xs text-amber-500 font-semibold inline-block mt-2">Ver días del plan →</span>
                     </div>
                 `).join('');
@@ -324,6 +323,16 @@
                         <label class="text-xs font-semibold opacity-70">Descripción</label>
                         <textarea id="newPlanDesc" placeholder="Breve descripción..." class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-16"></textarea>
                     </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs font-semibold opacity-70">Fecha de Inicio</label>
+                            <input type="date" id="newPlanStart" class="w-full p-2 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold opacity-70">Fecha de Fin</label>
+                            <input type="date" id="newPlanEnd" class="w-full p-2 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs">
+                        </div>
+                    </div>
                     <div>
                         <label class="text-xs font-semibold opacity-70">Días del plan (Ej: Día 1: Paz | Juan 14:27)</label>
                         <textarea id="newPlanDays" placeholder="Día 1 - Título | Pasaje&#10;Día 2 - Título | Pasaje" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
@@ -336,18 +345,20 @@
         async function guardarNuevoPlan() {
             const title = document.getElementById('newPlanTitle').value.trim();
             const description = document.getElementById('newPlanDesc').value.trim();
+            const start_date = document.getElementById('newPlanStart').value;
+            const end_date = document.getElementById('newPlanEnd').value;
             const daysText = document.getElementById('newPlanDays').value.trim();
 
             if (!title || !daysText) {
-                alert("Por favor completa el título y los días del plan.");
+                alert("Por favor completa al menos el título y los días del plan.");
                 return;
             }
 
             try {
-                // 1. Insertar el plan principal
+                // 1. Insertar el plan principal con fechas
                 const { data: planData, error: planError } = await supabaseClient
                     .from('reading_plans')
-                    .insert([{ title, description }])
+                    .insert([{ title, description, start_date, end_date }])
                     .select();
 
                 if (planError) throw planError;
@@ -376,7 +387,7 @@
                 cargarPlanes();
             } catch (err) {
                 console.error(err);
-                alert("Error al crear el plan en Supabase.");
+                alert("Error al crear el plan. Asegúrate de añadir las columnas start_date y end_date en la tabla reading_plans si deseas guardarlas.");
             }
         }
 
@@ -555,7 +566,7 @@
 
                 const shuffledData = data.sort(() => 0.5 - Math.random()).slice(0, 5);
 
-                document.getElementById('trivia-questions-container').innerHTML = shuffledData.map((q, idx) => `
+                contentBox.innerHTML = shuffledData.map((q, idx) => `
                     <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm">
                         <p class="font-semibold text-sm">${idx + 1}. ${q.question_text}</p>
                         <div class="grid grid-cols-1 gap-2">
