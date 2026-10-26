@@ -11,30 +11,46 @@
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        @keyframes explosion {
-            0% { transform: scale(0.5); opacity: 0; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
+        @keyframes burstStar {
+            0% {
+                transform: translate(0, 0) scale(0.3) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--dx), var(--dy)) scale(var(--scale)) rotate(360deg);
+                opacity: 0;
+            }
         }
-        @keyframes floatStar {
-            0% { transform: translateY(0px) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(-120px) rotate(360deg); opacity: 0; }
+        @keyframes fadeInOut {
+            0% { transform: scale(0.7); opacity: 0; }
+            20% { transform: scale(1.05); opacity: 1; }
+            80% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.1); opacity: 0; }
         }
-        .animate-explosion {
-            animation: explosion 0.6s ease-out forwards;
-        }
-        .star-particle {
+        .burst-particle {
             position: absolute;
-            animation: floatStar 1.5s ease-out forwards;
-            font-size: 1.5rem;
+            top: 50%;
+            left: 50%;
+            animation: burstStar 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
             pointer-events: none;
+        }
+        .blessing-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 100;
+            pointer-events: none;
+            animation: fadeInOut 2.5s ease-in-out forwards;
         }
     </style>
 </head>
 <body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans pb-20 relative overflow-x-hidden">
 
-    <!-- CONTENEDOR PARA LA EXPLOSIÓN DE ESTRELLAS -->
-    <div id="star-explosion-container" class="fixed inset-0 pointer-events-none z-50 flex items-center justify-center hidden"></div>
+    <!-- CONTENEDOR PARA LA EXPLOSIÓN DE ESTRELLAS FUGACES Y MENSAJE CENTRAL -->
+    <div id="explosion-overlay" class="hidden"></div>
 
     <div class="max-w-md mx-auto">
         <!-- CABECERA ÚNICA -->
@@ -688,7 +704,7 @@
             }
         }
 
-        // --- TRIVIA AVANZADA CON EXPLOSIÓN DE ESTRELLAS Y FRASE DE BENDICIÓN ---
+        // --- TRIVIA AVANZADA CON EXPLOSIÓN DE 30+ ESTRELLAS FUGACES Y MENSAJE CENTRAL ---
         let currentTriviaQuestions = [];
         let triviaAnsweredCount = 0;
         let roundCorrects = 0;
@@ -799,13 +815,13 @@
                         document.getElementById('global-chalices-display').innerText = userStats.chalices;
                         mensajeFinal += " ¡Ronda perfecta! Has ganado 🍷 **¡Un Cáliz sagrado!**";
                         
-                        // LANZAR EFECTO DE EXPLOSIÓN DE ESTRELLAS EN PANTALLA
-                        lanzarExplosionEstrellas();
+                        // LANZAR EFECTO DE EXPLOSIÓN DE 30+ ESTRELLAS FUGACES Y MENSAJE EN MEDIO
+                        lanzarExplosionEstrellasFugaces();
                     }
 
                     const container = document.getElementById('content-box');
                     container.insertAdjacentHTML('beforeend', `
-                        <div class="p-4 rounded-xl bg-amber-500/15 border border-amber-500/50 text-center space-y-2 mt-4 animate-explosion">
+                        <div class="p-4 rounded-xl bg-amber-500/15 border border-amber-500/50 text-center space-y-2 mt-4">
                             <div class="text-3xl">🌟🙏🌟</div>
                             <h3 class="font-bold text-lg text-amber-600 dark:text-amber-400">¡En hora buena, Dios te bendice!</h3>
                             <p class="text-xs opacity-90">${mensajeFinal}</p>
@@ -816,31 +832,48 @@
             }
         }
 
-        // FUNCIÓN PARA GENERAR LA EXPLOSIÓN DE ESTRELLAS VISUAL EN TODA LA PANTALLA
-        function lanzarExplosionEstrellas() {
-            const explosionContainer = document.getElementById('star-explosion-container');
-            explosionContainer.innerHTML = '';
-            explosionContainer.classList.remove('hidden');
+        // FUNCIÓN DE EXPLOSIÓN MASIVA DE ESTRELLAS FUGACES DESDE EL CENTRO
+        function lanzarExplosionEstrellasFugaces() {
+            const overlay = document.getElementById('explosion-overlay');
+            overlay.innerHTML = '';
+            overlay.className = 'blessing-overlay'; // Activa el contenedor central semitransparente
 
-            const totalStars = 25;
+            // Mensaje en medio de la pantalla con animación
+            const messageBox = document.createElement('div');
+            messageBox.className = 'bg-amber-500 text-zinc-950 px-6 py-4 rounded-2xl shadow-2xl text-center space-y-1 z-50 border-2 border-yellow-200';
+            messageBox.innerHTML = `
+                <div class="text-4xl">🌟✨🙏✨🌟</div>
+                <h2 class="text-xl font-extrabold tracking-wide">¡En hora buena, Dios te bendice!</h2>
+                <p class="text-xs font-medium opacity-90">¡Ronda completada con éxito!</p>
+            `;
+            overlay.appendChild(messageBox);
+
+            // Generar al menos 35 estrellas fugaces disparadas en todas direcciones
+            const totalStars = 35;
             for (let i = 0; i < totalStars; i++) {
                 const star = document.createElement('div');
-                star.className = 'star-particle';
-                star.innerText = '⭐';
+                star.className = 'burst-particle';
+                star.innerText = i % 2 === 0 ? '⭐' : '✨';
                 
-                // Posición aleatoria dentro de la pantalla
-                const randomX = (Math.random() - 0.5) * window.innerWidth * 0.8;
-                const randomY = (Math.random() - 0.5) * window.innerHeight * 0.6;
+                // Ángulo y distancia aleatoria para simular la explosión en círculo
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 100 + Math.random() * 250; // Distancia de vuelo
+                const dx = Math.cos(angle) * distance;
+                const dy = Math.sin(angle) * distance;
+                const scale = 0.5 + Math.random() * 1.5; // Tamaños variados
+
+                star.style.setProperty('--dx', `${dx}px`);
+                star.style.setProperty('--dy', `${dy}px`);
+                star.style.setProperty('--scale', scale);
                 
-                star.style.transform = `translate(${randomX}px, ${randomY}px)`;
-                explosionContainer.appendChild(star);
+                overlay.appendChild(star);
             }
 
-            // Ocultar el contenedor después de que termine la animación
+            // Desvanecer y ocultar el overlay después de 2.5 segundos
             setTimeout(() => {
-                explosionContainer.classList.add('hidden');
-                explosionContainer.innerHTML = '';
-            }, 1600);
+                overlay.className = 'hidden';
+                overlay.innerHTML = '';
+            }, 2500);
         }
 
         function volverAtras() {
