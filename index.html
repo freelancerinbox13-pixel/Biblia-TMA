@@ -1,4 +1,202 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblia TMA</title>
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SDK de Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans">
+
+    <div class="max-w-md mx-auto">
+        <!-- CABECERA FIJA (Nunca se duplica) -->
+        <header class="mb-6 flex items-center justify-between">
+            <button id="back-btn" onclick="volverAtras()" class="hidden px-3 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-sm font-medium active:scale-95 transition">
+                ← Volver
+            </button>
+            <div class="text-center flex-1">
+                <h1 id="main-title" class="text-2xl font-bold">📖 Biblia TMA</h1>
+                <p id="main-subtitle" class="text-sm opacity-70">Tu espacio de lectura en Telegram</p>
+            </div>
+            <div class="w-12"></div>
+        </header>
+
+        <!-- CONTENEDOR GENERAL DE CONTENIDO DINÁMICO -->
+        <div id="loading" class="text-center py-10 opacity-65 hidden">Cargando contenido...</div>
+        <div id="app-content" class="space-y-3"></div>
+    </div>
+
+    <script>
+        // Inicializar Telegram Mini App
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+
+        // Configuración de Supabase
+        const SUPABASE_URL = 'https://bteeppgksogbqozqvzxu.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_DOO_WWtFKHNPgMPmr1dfuA_xQ4BEniF';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentView = 'books'; // 'books', 'chapters', 'verses'
+        let selectedBook = null;
+        let selectedChapter = null;
+
+        const loadingEl = document.getElementById('loading');
+        const appContent = document.getElementById('app-content');
+        const backBtn = document.getElementById('back-btn');
+        const mainTitle = document.getElementById('main-title');
+        const mainSubtitle = document.getElementById('main-subtitle');
+
+        // 1. VISTA DE LIBROS
+        async function cargarLibros() {
+            currentView = 'books';
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "📖 Biblia TMA";
+            mainSubtitle.innerText = "Tu espacio de lectura en Telegram";
+            mainSubtitle.style.display = 'block';
+            
+            loadingEl.style.display = 'block';
+            appContent.innerHTML = '';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('bible_books')
+                    .select('*')
+                    .order('book_order', { ascending: true });
+
+                loadingEl.style.display = 'none';
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    appContent.innerHTML = '<p class="text-center opacity-60">No hay libros cargados todavía.</p>';
+                    return;
+                }
+
+                appContent.innerHTML = data.map(book => `
+                    <div onclick="seleccionarLibro('${book.id}', '${book.name}')" class="flex items-center justify-between p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 active:scale-98 transition cursor-pointer shadow-sm">
+                        <div>
+                            <span class="font-semibold text-base">${book.name}</span>
+                            <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-700 opacity-80">${book.testament}</span>
+                        </div>
+                        <span class="opacity-40 text-lg">›</span>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                loadingEl.style.display = 'none';
+                appContent.innerHTML = '<p class="text-center text-red-500">Error al cargar los libros.</p>';
+                console.error(err);
+            }
+        }
+
+        // 2. VISTA DE CAPÍTULOS
+        async function seleccionarLibro(bookId, bookName) {
+            selectedBook = { id: bookId, name: bookName };
+            currentView = 'chapters';
+            
+            backBtn.classList.remove('hidden');
+            mainTitle.innerText = bookName;
+            mainSubtitle.innerText = "Selecciona un capítulo";
+            mainSubtitle.style.display = 'block';
+
+            loadingEl.style.display = 'block';
+            appContent.innerHTML = '';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('bible_verses')
+                    .select('chapter')
+                    .eq('book_id', bookId);
+
+                loadingEl.style.display = 'none';
+                if (error) throw error;
+
+                if (!data || data.length === '0') {
+                    appContent.innerHTML = '<p class="text-center opacity-60">No hay capítulos disponibles.</p>';
+                    return;
+                }
+
+                const chapters = [...new Set(data.map(item => item.chapter))].sort((a, b) => a - b);
+
+                appContent.innerHTML = `
+                    <div class="grid grid-cols-4 gap-2">
+                        ${chapters.map(chNum => `
+                            <div onclick="seleccionarCapitulo(${chNum})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center font-semibold active:scale-95 transition cursor-pointer shadow-sm">
+                                ${chNum}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+            } catch (err) {
+                loadingEl.style.display = 'none';
+                appContent.innerHTML = '<p class="text-center text-red-500">Error al cargar los capítulos.</p>';
+                console.error(err);
+            }
+        }
+
+        // 3. VISTA DE VERSÍCULOS
+        async function seleccionarCapitulo(chapterNumber) {
+            selectedChapter = chapterNumber;
+            currentView = 'verses';
+
+            backBtn.classList.remove('hidden');
+            mainTitle.innerText = `${selectedBook.name} - Cap. ${chapterNumber}`;
+            mainSubtitle.style.display = 'none'; // Ocultar subtítulo para más espacio
+
+            loadingEl.style.display = 'block';
+            appContent.innerHTML = '';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('bible_verses')
+                    .select('*')
+                    .eq('book_id', selectedBook.id)
+                    .eq('chapter', chapterNumber)
+                    .order('verse', { ascending: true });
+
+                loadingEl.style.display = 'none';
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    appContent.innerHTML = '<p class="text-center opacity-60">No hay versículos en este capítulo.</p>';
+                    return;
+                }
+
+                appContent.innerHTML = data.map(v => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 leading-relaxed text-sm">
+                        <span class="font-bold text-xs opacity-60 mr-1">${v.verse}</span> ${v.text}
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                loadingEl.style.display = 'none';
+                appContent.innerHTML = '<p class="text-center text-red-500">Error al cargar los versículos.</p>';
+                console.error(err);
+            }
+        }
+
+        // BOTÓN VOLVER
+        function volverAtras() {
+            if (currentView === 'verses') {
+                seleccionarLibro(selectedBook.id, selectedBook.name);
+            } else if (currentView === 'chapters') {
+                cargarLibros();
+            }
+        }
+
+        // Iniciar app
+        cargarLibros();
+    </script>
+</body>
+</html>
+
 <html lang="es">
 <head>
     <meta charset="UTF-8">
