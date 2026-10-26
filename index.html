@@ -10,8 +10,31 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @keyframes explosion {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes floatStar {
+            0% { transform: translateY(0px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-120px) rotate(360deg); opacity: 0; }
+        }
+        .animate-explosion {
+            animation: explosion 0.6s ease-out forwards;
+        }
+        .star-particle {
+            position: absolute;
+            animation: floatStar 1.5s ease-out forwards;
+            font-size: 1.5rem;
+            pointer-events: none;
+        }
+    </style>
 </head>
-<body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans pb-20">
+<body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans pb-20 relative overflow-x-hidden">
+
+    <!-- CONTENEDOR PARA LA EXPLOSIÓN DE ESTRELLAS -->
+    <div id="star-explosion-container" class="fixed inset-0 pointer-events-none z-50 flex items-center justify-center hidden"></div>
 
     <div class="max-w-md mx-auto">
         <!-- CABECERA ÚNICA -->
@@ -61,6 +84,12 @@
         let currentTelegramId = tgUser?.id || 123456789;
         let currentUserName = tgUser?.first_name || 'Usuario Demo';
 
+        let userStats = JSON.parse(localStorage.getItem(`trivia_stats_${currentTelegramId}`)) || { stars: 0, chalices: 0 };
+
+        function guardarStats() {
+            localStorage.setItem(`trivia_stats_${currentTelegramId}`, JSON.stringify(userStats));
+        }
+
         async function registrarUsuario() {
             try {
                 await supabaseClient.from('users').upsert([{
@@ -79,7 +108,6 @@
         const mainTitle = document.getElementById('main-title');
         const mainSubtitle = document.getElementById('main-subtitle');
 
-        // FUNCIÓN INTELIGENTE PARA SEPARAR CITAS BÍBLICAS
         function parsearReferenciaBiblica(texto) {
             if (!texto) return null;
             const match = texto.match(/^([\w\sáéíóúÁÉÍÓÚñÑ]+?)\s+(\d+)(?::(\d+(?:-\d+)?))?/i);
@@ -93,7 +121,6 @@
             };
         }
 
-        // 1. BIBLIOTECA - LIBROS
         async function cargarLibros() {
             currentView = 'books';
             backBtn.classList.add('hidden');
@@ -125,7 +152,6 @@
             }
         }
 
-        // 2. CAPÍTULOS
         async function seleccionarLibro(bookId, bookName) {
             selectedBook = { id: bookId, name: bookName };
             currentView = 'chapters';
@@ -154,7 +180,6 @@
             }
         }
 
-        // 3. VERSÍCULOS + MARCADOR ⭐
         async function seleccionarCapitulo(chapterNumber) {
             currentView = 'verses';
             backBtn.classList.remove('hidden');
@@ -230,7 +255,6 @@
             cargarFavoritos();
         }
 
-        // --- BUSCADOR BÍBLICO INTELIGENTE ---
         function abrirBuscador() {
             currentView = 'search';
             backBtn.classList.add('hidden');
@@ -339,7 +363,6 @@
             `).join('');
         }
 
-        // --- PLANES DE LECTURA ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -600,7 +623,6 @@
             }
         }
 
-        // --- ORACIÓN ---
         async function cargarOraciones() {
             currentView = 'prayer';
             backBtn.classList.add('hidden');
@@ -666,55 +688,70 @@
             }
         }
 
-        // --- TRIVIA CON SISTEMA DE RECOMPENSAS (⭐ Estrellas / Puntuación) ---
-        let triviaScore = 0;
+        // --- TRIVIA AVANZADA CON EXPLOSIÓN DE ESTRELLAS Y FRASE DE BENDICIÓN ---
+        let currentTriviaQuestions = [];
         let triviaAnsweredCount = 0;
+        let roundCorrects = 0;
 
         async function cargarTrivia() {
             currentView = 'trivia';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "❓ Trivia Bíblica";
-            mainSubtitle.innerText = "Pon a prueba tus conocimientos";
+            mainSubtitle.innerText = "Demuestra tu sabiduría";
             mainSubtitle.style.display = 'block';
-            triviaScore = 0;
             triviaAnsweredCount = 0;
+            roundCorrects = 0;
 
             contentBox.innerHTML = `
-                <div class="flex items-center justify-between bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl mb-4">
-                    <div class="flex items-center gap-2">
-                        <span class="text-xl">⭐</span>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl">
+                        <span class="text-2xl">⭐</span>
                         <div>
-                            <div class="text-xs font-semibold opacity-70">Puntuación</div>
-                            <div id="trivia-score-display" class="text-base font-bold text-amber-500">0 Aciertos</div>
+                            <div class="text-[10px] font-semibold opacity-70 uppercase tracking-wider">Estrellas</div>
+                            <div id="global-stars-display" class="text-base font-bold text-amber-500">${userStats.stars}</div>
                         </div>
                     </div>
-                    <button onclick="cargarTrivia()" class="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shadow-sm active:scale-95 transition">
-                        🔄 Reiniciar
-                    </button>
+                    <div class="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 p-3 rounded-xl">
+                        <span class="text-2xl">🍷</span>
+                        <div>
+                            <div class="text-[10px] font-semibold opacity-70 uppercase tracking-wider">Cálices</div>
+                            <div id="global-chalices-display" class="text-base font-bold text-purple-500">${userStats.chalices}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-semibold opacity-70">Pregunta aleatoria</span>
+                    <button onclick="cargarTrivia()" class="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">🔄 Nueva Partida</button>
                 </div>
                 <div id="trivia-questions-container" class="space-y-3">
-                    <div class="text-center py-10 opacity-65">Mezclando preguntas aleatorias...</div>
+                    <div class="text-center py-10 opacity-65">Cargando preguntas aleatorias...</div>
                 </div>
             `;
 
             try {
-                const { data, error } = await supabaseClient.from('trivia_questions').select('*');
+                const { data, error } = await supabaseClient.from('trivia_questions').select('*').limit(200);
                 if (error) throw error;
                 if (!data || data.length === 0) {
                     document.getElementById('trivia-questions-container').innerHTML = '<p class="text-center opacity-60 py-5">No hay preguntas disponibles.</p>';
                     return;
                 }
 
-                const shuffledData = data.sort(() => 0.5 - Math.random()).slice(0, 5);
+                const shuffled = [...data];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
 
-                const preguntasHTML = shuffledData.map((q, idx) => `
-                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm">
+                currentTriviaQuestions = shuffled.slice(0, 5);
+
+                const preguntasHTML = currentTriviaQuestions.map((q, idx) => `
+                    <div id="trivia_card_${q.id}" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm transition">
                         <p class="font-semibold text-sm">${idx + 1}. ${q.question_text}</p>
                         <div class="grid grid-cols-1 gap-2">
-                            <button id="btn_${q.id}_A" onclick="responderTrivia(${q.id}, 'A', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">A) ${q.option_a}</button>
-                            <button id="btn_${q.id}_B" onclick="responderTrivia(${q.id}, 'B', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">B) ${q.option_b}</button>
-                            <button id="btn_${q.id}_C" onclick="responderTrivia(${q.id}, 'C', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">C) ${q.option_c}</button>
-                            <button id="btn_${q.id}_D" onclick="responderTrivia(${q.id}, 'D', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">D) ${q.option_d}</button>
+                            <button id="btn_${q.id}_A" onclick="responderTrivia('${q.id}', 'A', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">A) ${q.option_a}</button>
+                            <button id="btn_${q.id}_B" onclick="responderTrivia('${q.id}', 'B', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">B) ${q.option_b}</button>
+                            <button id="btn_${q.id}_C" onclick="responderTrivia('${q.id}', 'C', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">C) ${q.option_c}</button>
+                            <button id="btn_${q.id}_D" onclick="responderTrivia('${q.id}', 'D', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">D) ${q.option_d}</button>
                         </div>
                         <div id="trivia_feedback_${q.id}" class="text-xs font-bold pt-1"></div>
                     </div>
@@ -722,6 +759,7 @@
 
                 document.getElementById('trivia-questions-container').innerHTML = preguntasHTML;
             } catch (err) {
+                console.error(err);
                 document.getElementById('trivia-questions-container').innerHTML = '<p class="text-center text-red-500">Error al cargar la trivia.</p>';
             }
         }
@@ -735,35 +773,76 @@
             const correctBtn = document.getElementById(`btn_${qId}_${correctOption}`);
 
             if (selectedOption === correctOption) {
-                selectedBtn.classList.add('bg-green-500/20', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
-                feedbackBox.innerHTML = '<span class="text-green-500">✨ ¡Respuesta Correcta! (+1 ⭐)</span>';
-                triviaScore++;
+                selectedBtn.classList.add('bg-green-500/25', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
+                feedbackBox.innerHTML = '<span class="text-green-500">✨ ¡Correcto! (+1 Estrellas ⭐)</span>';
+                userStats.stars += 1;
+                roundCorrects++;
             } else {
-                selectedBtn.classList.add('bg-red-500/20', 'border', 'border-red-500', 'text-red-600', 'dark:text-red-400');
-                correctBtn.classList.add('bg-green-500/20', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
-                feedbackBox.innerHTML = `<span class="text-red-500">❌ Incorrecto. La opción correcta era la ${correctOption}</span>`;
+                selectedBtn.classList.add('bg-red-500/25', 'border', 'border-red-500', 'text-red-600', 'dark:text-red-400');
+                correctBtn.classList.add('bg-green-500/25', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
+                feedbackBox.innerHTML = `<span class="text-red-500">❌ Incorrecto (-1 Estrella ⭐). Era la ${correctOption}</span>`;
+                userStats.stars = Math.max(0, userStats.stars - 1);
             }
 
-            triviaAnsweredCount++;
-            document.getElementById('trivia-score-display').innerText = `${triviaScore} Aciertos`;
+            guardarStats();
+            document.getElementById('global-stars-display').innerText = userStats.stars;
 
-            // Si ya respondió todas las preguntas de la partida, mostrar mensaje de felicitación con copa/cáliz 🍷
-            if (triviaAnsweredCount === 5) {
+            triviaAnsweredCount++;
+
+            if (triviaAnsweredCount === currentTriviaQuestions.length) {
                 setTimeout(() => {
+                    let mensajeFinal = `Has conseguido ${roundCorrects} de ${currentTriviaQuestions.length} aciertos.`;
+                    
+                    if (roundCorrects === currentTriviaQuestions.length) {
+                        userStats.chalices += 1;
+                        guardarStats();
+                        document.getElementById('global-chalices-display').innerText = userStats.chalices;
+                        mensajeFinal += " ¡Ronda perfecta! Has ganado 🍷 **¡Un Cáliz sagrado!**";
+                        
+                        // LANZAR EFECTO DE EXPLOSIÓN DE ESTRELLAS EN PANTALLA
+                        lanzarExplosionEstrellas();
+                    }
+
                     const container = document.getElementById('content-box');
                     container.insertAdjacentHTML('beforeend', `
-                        <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/40 text-center space-y-2 mt-4 animate-fade-in">
-                            <div class="text-2xl">🍷✨</div>
-                            <h3 class="font-bold text-base text-amber-600 dark:text-amber-400">¡Partida Finalizada!</h3>
-                            <p class="text-xs opacity-80">Has conseguido ${triviaScore} de 5 aciertos en esta ronda.</p>
-                            <button onclick="cargarTrivia()" class="mt-2 px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition">Jugar otra vez</button>
+                        <div class="p-4 rounded-xl bg-amber-500/15 border border-amber-500/50 text-center space-y-2 mt-4 animate-explosion">
+                            <div class="text-3xl">🌟🙏🌟</div>
+                            <h3 class="font-bold text-lg text-amber-600 dark:text-amber-400">¡En hora buena, Dios te bendice!</h3>
+                            <p class="text-xs opacity-90">${mensajeFinal}</p>
+                            <button onclick="cargarTrivia()" class="mt-2 px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition shadow-sm">Jugar otra ronda</button>
                         </div>
                     `);
-                }, 500);
+                }, 600);
             }
         }
 
-        // VOLVER
+        // FUNCIÓN PARA GENERAR LA EXPLOSIÓN DE ESTRELLAS VISUAL EN TODA LA PANTALLA
+        function lanzarExplosionEstrellas() {
+            const explosionContainer = document.getElementById('star-explosion-container');
+            explosionContainer.innerHTML = '';
+            explosionContainer.classList.remove('hidden');
+
+            const totalStars = 25;
+            for (let i = 0; i < totalStars; i++) {
+                const star = document.createElement('div');
+                star.className = 'star-particle';
+                star.innerText = '⭐';
+                
+                // Posición aleatoria dentro de la pantalla
+                const randomX = (Math.random() - 0.5) * window.innerWidth * 0.8;
+                const randomY = (Math.random() - 0.5) * window.innerHeight * 0.6;
+                
+                star.style.transform = `translate(${randomX}px, ${randomY}px)`;
+                explosionContainer.appendChild(star);
+            }
+
+            // Ocultar el contenedor después de que termine la animación
+            setTimeout(() => {
+                explosionContainer.classList.add('hidden');
+                explosionContainer.innerHTML = '';
+            }, 1600);
+        }
+
         function volverAtras() {
             if (currentView === 'verses') {
                 seleccionarLibro(selectedBook.id, selectedBook.name);
