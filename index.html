@@ -269,7 +269,7 @@
             }
         }
 
-        // --- PLANES DE LECTURA ---
+        // --- PLANES DE LECTURA (BUSCADOR INTELIGENTE: TÍTULO, DESCRIPCIÓN Y PASAJES) ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -281,7 +281,7 @@
                 <div class="space-y-2 mb-3">
                     <button onclick="mostrarFormularioCrearPlan()" class="w-full py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition shadow-sm">+ Crear Nuevo Plan</button>
                     <div class="flex gap-2">
-                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar planes..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar por título o pasaje..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
                         <button onclick="filtrarPlanes()" class="px-4 py-2 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                 </div>
@@ -320,21 +320,42 @@
 
         async function filtrarPlanes() {
             const query = document.getElementById('planSearchInput').value.toLowerCase().trim();
-            
-            if (!allPlansCache || allPlansCache.length === 0) {
-                try {
-                    const { data } = await supabaseClient.from('reading_plans').select('*');
-                    allPlansCache = data || [];
-                } catch (e) {
-                    console.error(e);
-                }
+            if (!query) {
+                renderizarPlanes(allPlansCache);
+                return;
             }
 
-            const filtrados = allPlansCache.filter(p => 
-                (p.title && p.title.toLowerCase().includes(query)) || 
-                (p.description && p.description.toLowerCase().includes(query))
-            );
-            renderizarPlanes(filtrados);
+            document.getElementById('plans-list').innerHTML = '<div class="text-center py-6 opacity-65">Buscando planes...</div>';
+
+            try {
+                // Buscamos planes que coincidan por título o descripción
+                let matchedPlans = allPlansCache.filter(p => 
+                    (p.title && p.title.toLowerCase().includes(query)) || 
+                    (p.description && p.description.toLowerCase().includes(query))
+                );
+
+                // También buscamos en los días/pasajes de los planes en Supabase
+                const { data: daysData } = await supabaseClient
+                    .from('reading_plan_days')
+                    .select('plan_id')
+                    .ilike('passage', `%${query}%`);
+
+                if (daysData && daysData.length > 0) {
+                    const planIdsFromDays = [...new Set(daysData.map(d => d.plan_id))];
+                    const extraPlans = allPlansCache.filter(p => planIdsFromDays.includes(p.id));
+                    
+                    // Unimos ambos resultados sin duplicados
+                    const idsMap = new Set(matchedPlans.map(p => p.id));
+                    extraPlans.forEach(p => {
+                        if (!idsMap.has(p.id)) matchedPlans.push(p);
+                    });
+                }
+
+                renderizarPlanes(matchedPlans);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('plans-list').innerHTML = '<p class="text-center text-red-500">Error en la búsqueda.</p>';
+            }
         }
 
         function mostrarFormularioCrearPlan() {
@@ -419,7 +440,7 @@
                 cargarPlanes();
             } catch (err) {
                 console.error(err);
-                alert("Error al crear el plan. Asegúrate de haber ejecutado el comando SQL para añadir las columnas de fecha y hora.");
+                alert("Error al crear el plan.");
             }
         }
 
