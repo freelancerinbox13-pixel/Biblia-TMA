@@ -2,589 +2,6 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lector Mini App - Telegram</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root {
-            --bg-color: #ffffff;
-            --text-color: #333333;
-            --accent-color: #2481cc;
-            --card-bg: #f5f5f5;
-        }
-        html.modo-noche, body.modo-noche {
-            --bg-color: #121212 !important;
-            --text-color: #e0e0e0 !important;
-            --card-bg: #1e1e1e !important;
-            background-color: var(--bg-color) !important;
-            color: var(--text-color) !important;
-        }
-        html.modo-evook, body.modo-evook {
-            --bg-color: #f4ecd8 !important;
-            --text-color: #2c221e !important;
-            --card-bg: #e5dcc3 !important;
-            background-color: var(--bg-color) !important;
-            color: var(--text-color) !important;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        html, body { height: 100vh; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; overflow: hidden; }
-
-        header { padding: 12px 16px; background-color: var(--card-bg); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.1); }
-        .btn { background: var(--accent-color); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .select-modo { background: var(--accent-color); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; outline: none; }
-
-        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; background-color: var(--bg-color); }
-        
-        .seccion { display: none; flex: 1; flex-direction: column; padding: 16px; overflow-y: auto; background-color: var(--bg-color); }
-        .seccion.activa { display: flex; }
-
-        .grid-libros { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 16px; }
-        .libro-card { background: var(--card-bg); padding: 12px; border-radius: 8px; text-align: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .libro-card h3 { font-size: 14px; margin-top: 8px; word-break: break-word; color: var(--text-color); }
-
-        /* Estilos para Planes y Buscador */
-        .plan-item { background: var(--card-bg); padding: 12px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .input-buscador-planes, .input-hora-plan { background-color: var(--card-bg); color: var(--text-color); border: 1px solid rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; font-size: 13px; outline: none; width: 100%; margin-bottom: 12px; }
-
-        #viewer-container { flex: 1; position: relative; overflow: auto; display: flex; flex-direction: column; background: var(--bg-color); }
-        #viewer { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; background: var(--bg-color); }
-        
-        #viewer-container.zoom-activo {
-            overflow: scroll !important;
-            touch-action: pan-x pan-y pinch-zoom;
-        }
-        #viewer-container.zoom-activo #viewer {
-            transform: scale(1.3);
-            transform-origin: top left;
-        }
-
-        canvas { max-width: 100%; height: auto !important; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .reader-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--card-bg); font-size: 13px; z-index: 10; }
-        .nota-item { background: var(--card-bg); padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 13px; border-left: 4px solid var(--accent-color); }
-
-        /* Botón de reiniciar trivia persistente */
-        #btn-reiniciar-trivia.visible {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-
-        #menu-flotante {
-            display: none;
-            position: absolute;
-            background: #222;
-            color: #fff;
-            padding: 6px 10px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 1000;
-            gap: 6px;
-            align-items: center;
-        }
-        #menu-flotante button {
-            background: transparent;
-            border: none;
-            color: #fff;
-            font-size: 12px;
-            padding: 4px 8px;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        #menu-flotante button:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        #menu-flotante button.btn-amarillo {
-            background: #ffeb3b;
-            color: #000;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-
-    <div id="menu-flotante">
-        <button class="btn-amarillo" onclick="menuRemarcar()">Remarcar</button>
-        <button onclick="menuTraducir()">Traducir</button>
-        <button onclick="menuNota()">Nota</button>
-    </div>
-
-    <header>
-        <h2 id="titulo-app">Biblioteca</h2>
-        <div>
-            <button class="btn" onclick="cambiarSeccion('biblioteca')">Libros</button>
-            <button class="btn" onclick="cambiarSeccion('planes')">Planes</button>
-            <button class="btn" onclick="cambiarSeccion('trivia')">Trivia</button>
-            <button class="btn" onclick="cambiarSeccion('notas')">Notas</button>
-        </div>
-    </header>
-
-    <main>
-        <!-- SECCIÓN 1: BIBLIOTECA -->
-        <div id="seccion-biblioteca" class="seccion activa">
-            <h2 style="margin-bottom: 16px;">Tus Libros</h2>
-            <div id="lista-libros" class="grid-libros">
-                <p>Cargando biblioteca desde Supabase...</p>
-            </div>
-        </div>
-
-        <!-- SECCIÓN 2: PLANES DE LECTURA (Con buscador y hora de comienzo) -->
-        <div id="seccion-planes" class="seccion">
-            <h2 style="margin-bottom: 16px;">Planes de Lectura</h2>
-            <input type="text" id="input-buscar-planes" class="input-buscador-planes" placeholder="Buscar salmos, proverbios, temas..." oninput="filtrarPlanes(this.value)">
-            
-            <div id="lista-planes">
-                <div class="plan-item" data-titulo="plan anual salmos proverbios">
-                    <h3>Plan Anual de Sabiduría (Salmos y Proverbios)</h3>
-                    <p>Lectura diaria meditativa.</p>
-                    <div style="margin-top: 8px;">
-                        <label style="font-size: 12px; display: block; margin-bottom: 4px;">Hora de comienzo:</label>
-                        <input type="time" class="input-hora-plan" id="hora-plan-1" onchange="guardarHoraPlan('1', this.value)">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- SECCIÓN 3: TRIVIA (Con botón de reinicio visible) -->
-        <div id="seccion-trivia" class="seccion">
-            <h2>Trivia Bíblica</h2>
-            <div id="contenedor-preguntas" style="margin: 16px 0;">
-                <p>¿Qué libro de la Biblia contiene los Salmos?</p>
-                <!-- Opciones de trivia de ejemplo -->
-            </div>
-            <button id="btn-reiniciar-trivia" class="btn visible" style="background-color: #ff9800; color: #fff;" onclick="reiniciarTrivia()">Comenzar Nuevamente</button>
-        </div>
-
-        <!-- SECCIÓN 4: LECTOR -->
-        <div id="seccion-lector" class="seccion">
-            <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; align-items: center;">
-                <select id="select-modo" class="select-modo" onchange="cambiarModoDesplegable(this.value)">
-                    <option value="dia" selected>Modo: Día</option>
-                    <option value="noche">Modo: Noche</option>
-                    <option value="evook">Modo: E-book</option>
-                </select>
-                <button class="btn" onclick="toggleZoom()" id="btn-zoom">Zoom: Off</button>
-            </div>
-            
-            <div id="viewer-container">
-                <div id="viewer"></div>
-            </div>
-
-            <div class="reader-toolbar">
-                <button class="btn" onclick="libroAnterior()">Anterior</button>
-                <span id="progreso-lectura">0%</span>
-                <button class="btn" onclick="libroSiguiente()">Siguiente</button>
-            </div>
-        </div>
-
-        <!-- SECCIÓN 5: NOTAS Y TRADUCCIONES -->
-        <div id="seccion-notas" class="seccion">
-            <h2 style="margin-bottom: 16px;">Notas y Traducciones</h2>
-            <div id="lista-notas">
-                <p>No hay notas guardadas aún.</p>
-            </div>
-        </div>
-    </main>
-
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready();
-
-        const tgUser = tg.initDataUnsafe?.user;
-        const tgUserId = tgUser?.id ?? null;
-        const tgHash = tg.initData || '';
-
-        const SUPABASE_URL = 'https://augjyfnnzserfdoekkrp.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_ed7WzU7SyteyxrAk5qE44w_N2vslpMU';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        let book = null;
-        let rendition = null;
-        let zoomActivo = false;
-        let pdfDoc = null;
-        let pageNum = 1;
-        let formatoActual = '';
-        let urlActualGlobal = '';
-        let tituloLibroActual = '';
-        let textoSeleccionadoActual = '';
-        let epubRangeActual = null;
-
-        function cambiarSeccion(seccion) {
-            document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
-            document.getElementById(`seccion-${seccion}`).classList.add('activa');
-            document.getElementById('titulo-app').innerText = 
-                seccion === 'biblioteca' ? 'Biblioteca' :
-                seccion === 'planes' ? 'Planes de Lectura' :
-                seccion === 'trivia' ? 'Trivia' :
-                seccion === 'lector' ? 'Lector' : 'Notas y Traducciones';
-            if (seccion === 'notas') renderizarNotas();
-            if (seccion === 'planes') cargarHorasPlanes();
-            ocultarMenuFlotante();
-        }
-
-        // ---------- Buscador en Planes ----------
-        function filtrarPlanes(query) {
-            const filtro = query.toLowerCase().trim();
-            const planes = document.querySelectorAll('.plan-item');
-            planes.forEach(plan => {
-                const texto = plan.innerText.toLowerCase();
-                if (texto.includes(filtro)) {
-                    plan.style.display = 'block';
-                } else {
-                    plan.style.display = 'none';
-                }
-            });
-        }
-
-        // ---------- Hora de Comienzo en Planes (LocalStorage) ----------
-        function guardarHoraPlan(planId, hora) {
-            if (!hora) return;
-            localStorage.setItem(`hora_plan_${planId}`, hora);
-        }
-
-        function cargarHorasPlanes() {
-            const inputs = document.querySelectorAll('.input-hora-plan');
-            inputs.forEach(input => {
-                const planId = input.id.replace('hora-plan-', '');
-                const guardada = localStorage.getItem(`hora_plan_${planId}`);
-                if (guardada) {
-                    input.value = guardada;
-                }
-            });
-        }
-
-        // ---------- Control de Trivia ----------
-        function reiniciarTrivia() {
-            alert("Trivia reiniciada correctamente.");
-            // Aquí puedes reiniciar el estado de las preguntas de la trivia
-        }
-
-        async function cargarBiblioteca() {
-            const contenedor = document.getElementById('lista-libros');
-            contenedor.innerHTML = '<p>Conectando con Supabase...</p>';
-
-            const { data, error } = await supabaseClient.from('libros').select('*');
-
-            if (error) {
-                contenedor.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                contenedor.innerHTML = '<p>La tabla de libros está vacía.</p>';
-                return;
-            }
-
-            contenedor.innerHTML = '';
-            data.forEach(libro => {
-                const card = document.createElement('div');
-                card.className = 'libro-card';
-                card.innerHTML = `
-                    <div style="background:#ddd; height:120px; border-radius:4px; margin-bottom:8px; display:flex; align-items:center; justify-content:center;">📖</div>
-                    <h3>${libro.titulo || 'Sin título'}</h3>
-                `;
-                card.onclick = () => abrirLibro(libro.url_archivo, libro.titulo || 'Sin título');
-                contenedor.appendChild(card);
-            });
-        }
-
-        function abrirLibro(url, titulo) {
-            if (!url) {
-                alert("URL de archivo no válida.");
-                return;
-            }
-            urlActualGlobal = url;
-            tituloLibroActual = titulo || '';
-            cambiarSeccion('lector');
-            const viewer = document.getElementById('viewer');
-            viewer.innerHTML = '';
-            ocultarMenuFlotante();
-
-            if (url.toLowerCase().includes('.pdf')) {
-                formatoActual = 'pdf';
-                cargarPdf(url);
-            } else {
-                formatoActual = 'epub';
-                cargarEpub(url);
-            }
-        }
-
-        async function cargarEpub(url) {
-            try {
-                book = ePub(url);
-                rendition = book.renderTo("viewer", { width: "100%", height: "100%" });
-
-                let ultimaUbicacion = localStorage.getItem('last_loc_' + url);
-                await rendition.display(ultimaUbicacion || undefined);
-
-                rendition.on("relocated", (location) => {
-                    const percent = book.locations.percentageFromCfi(location.start.cfi);
-                    if (!isNaN(percent)) {
-                        document.getElementById('progreso-lectura').innerText = `${Math.round(percent * 100)}%`;
-                        localStorage.setItem('last_loc_' + url, location.start.cfi);
-                    }
-                });
-
-                rendition.on("selected", (cfiRange, contents) => {
-                    epubRangeActual = cfiRange;
-                    textoSeleccionadoActual = contents.window.getSelection().toString().trim();
-
-                    if (textoSeleccionadoActual.length > 0) {
-                        try {
-                            const selection = contents.window.getSelection();
-                            const range = selection.getRangeAt(0);
-                            const rect = range.getBoundingClientRect();
-                            const frameRect = contents.window.frameElement
-                                ? contents.window.frameElement.getBoundingClientRect()
-                                : { left: 0, top: 0 };
-                            mostrarMenuFlotante(
-                                frameRect.left + rect.left + 20,
-                                frameRect.top + rect.top - 45
-                            );
-                        } catch (e) {
-                            mostrarMenuFlotante(100, 100);
-                        }
-                    }
-                });
-
-                book.locations.generate(1024);
-            } catch (error) {
-                console.error("Error crítico al cargar EPUB:", error);
-                document.getElementById('viewer').innerHTML = '<p style="color:red; padding:20px;">Error al cargar el archivo EPUB.</p>';
-            }
-        }
-
-        function cargarPdf(url) {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-            let ultimaPagina = parseInt(localStorage.getItem('last_page_' + url) || '1');
-            pageNum = ultimaPagina;
-
-            const viewer = document.getElementById('viewer');
-            viewer.innerHTML = '<p style="padding: 20px;">Cargando PDF...</p>';
-
-            pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
-                pdfDoc = pdfDoc_;
-                renderizarPaginaPdf(pageNum);
-            }).catch(err => {
-                console.error("Error al cargar PDF:", err);
-                viewer.innerHTML = '<p style="color:red; padding: 20px;">Error al cargar el documento PDF.</p>';
-            });
-        }
-
-        function renderizarPaginaPdf(num) {
-            pdfDoc.getPage(num).then(function(page) {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const viewer = document.getElementById('viewer');
-                viewer.innerHTML = '';
-                viewer.appendChild(canvas);
-
-                const viewport = page.getViewport({ scale: 1.2 });
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-
-                page.render({ canvasContext: ctx, viewport: viewport });
-
-                let porcentaje = Math.round((num / pdfDoc.numPages) * 100);
-                document.getElementById('progreso-lectura').innerText = `${porcentaje}% (Pág. ${num}/${pdfDoc.numPages})`;
-                localStorage.setItem('last_page_' + urlActualGlobal, num);
-            });
-        }
-
-        document.addEventListener('mouseup', procesarSeleccionGeneral);
-        document.addEventListener('touchend', procesarSeleccionGeneral);
-
-        function procesarSeleccionGeneral(e) {
-            if (formatoActual === 'pdf') {
-                const sel = window.getSelection();
-                const texto = sel.toString().trim();
-                if (texto.length > 0) {
-                    textoSeleccionadoActual = texto;
-                    epubRangeActual = null;
-                    try {
-                        const range = sel.getRangeAt(0);
-                        const rect = range.getBoundingClientRect();
-                        mostrarMenuFlotante(rect.left, rect.top - 45);
-                    } catch (err) {
-                        mostrarMenuFlotante(50, 100);
-                    }
-                }
-            }
-        }
-
-        function mostrarMenuFlotante(x, y) {
-            const menu = document.getElementById('menu-flotante');
-            menu.style.left = `${Math.max(10, x)}px`;
-            menu.style.top = `${Math.max(10, y)}px`;
-            menu.style.display = 'flex';
-        }
-
-        function ocultarMenuFlotante() {
-            document.getElementById('menu-flotante').style.display = 'none';
-        }
-
-        async function guardarAnotacion({ tipo, texto, original, anchor, color }) {
-            if (!tgUserId) {
-                alert('Usuario de Telegram no disponible.');
-                return null;
-            }
-            const payload = {
-                user_id: tgUserId,
-                telegram_hash: tgHash ? tgHash.slice(0, 64) : null,
-                book_id: urlActualGlobal,
-                book_title: tituloLibroActual,
-                annotation_type: tipo,
-                text_content: texto,
-                original_text: original || '',
-                anchor: anchor || null,
-                color: color || null,
-                client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()))
-            };
-
-            const { data, error } = await supabaseClient
-                .from('reader_annotations')
-                .insert(payload)
-                .select()
-                .single();
-
-            if (error) {
-                console.error('Error guardando anotación:', error);
-                alert('No se pudo guardar: ' + error.message);
-                return null;
-            }
-            return data;
-        }
-
-        async function menuRemarcar() {
-            if (!textoSeleccionadoActual) return;
-            const anchor = (formatoActual === 'epub' && epubRangeActual) ? { type: 'epub-cfi', cfi: epubRangeActual } : null;
-
-            if (formatoActual === 'epub' && rendition && epubRangeActual) {
-                rendition.annotations.highlight(epubRangeActual, {}, null, "highlight", { fill: "#ffeb3b", "fill-opacity": "0.4" });
-            }
-
-            await guardarAnotacion({ tipo: 'Resaltado', texto: textoSeleccionadoActual, original: textoSeleccionadoActual, anchor, color: '#ffeb3b' });
-            ocultarMenuFlotante();
-        }
-
-        async function menuTraducir() {
-            if (!textoSeleccionadoActual) return;
-            const anchor = (formatoActual === 'epub' && epubRangeActual) ? { type: 'epub-cfi', cfi: epubRangeActual } : null;
-            const traducido = `[Traducido]: ${textoSeleccionadoActual}`;
-
-            await guardarAnotacion({ tipo: 'Traducción', texto: traducido, original: textoSeleccionadoActual, anchor });
-            ocultarMenuFlotante();
-        }
-
-        async function menuNota() {
-            if (!textoSeleccionadoActual) return;
-            const anchor = (formatoActual === 'epub' && epubRangeActual) ? { type: 'epub-cfi', cfi: epubRangeActual } : (formatoActual === 'pdf' ? { type: 'pdf-page', page: pageNum } : null);
-
-            await guardarAnotacion({ tipo: 'Nota', texto: textoSeleccionadoActual, original: textoSeleccionadoActual, anchor });
-            ocultarMenuFlotante();
-        }
-
-        function libroSiguiente() {
-            ocultarMenuFlotante();
-            if (formatoActual === 'epub' && rendition) {
-                rendition.next();
-            } else if (formatoActual === 'pdf' && pdfDoc && pageNum < pdfDoc.numPages) {
-                pageNum++;
-                renderizarPaginaPdf(pageNum);
-            }
-        }
-
-        function libroAnterior() {
-            ocultarMenuFlotante();
-            if (formatoActual === 'epub' && rendition) {
-                rendition.prev();
-            } else if (formatoActual === 'pdf' && pdfDoc && pageNum > 1) {
-                pageNum--;
-                renderizarPaginaPdf(pageNum);
-            }
-        }
-
-        function cambiarModoDesplegable(modo) {
-            document.documentElement.classList.remove('modo-noche', 'modo-evook');
-            document.body.classList.remove('modo-noche', 'modo-evook');
-
-            if (modo === 'noche') {
-                document.documentElement.classList.add('modo-noche');
-                document.body.classList.add('modo-noche');
-            } else if (modo === 'evook') {
-                document.documentElement.classList.add('modo-evook');
-                document.body.classList.add('modo-evook');
-            }
-        }
-
-        function toggleZoom() {
-            zoomActivo = !zoomActivo;
-            const container = document.getElementById('viewer-container');
-            const btn = document.getElementById('btn-zoom');
-
-            if (zoomActivo) {
-                container.classList.add('zoom-activo');
-                btn.innerText = "Zoom: On (Libre)";
-            } else {
-                container.classList.remove('zoom-activo');
-                btn.innerText = "Zoom: Off";
-            }
-        }
-
-        async function renderizarNotas() {
-            const contenedor = document.getElementById('lista-notas');
-            if (!tgUserId) {
-                contenedor.innerHTML = '<p>Usuario de Telegram no disponible.</p>';
-                return;
-            }
-
-            contenedor.innerHTML = '<p>Cargando notas...</p>';
-            const { data, error } = await supabaseClient
-                .from('reader_annotations')
-                .select('*')
-                .eq('user_id', tgUserId)
-                .is('deleted_at', null)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                contenedor.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`;
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                contenedor.innerHTML = '<p>No hay notas guardadas aún.</p>';
-                return;
-            }
-
-            contenedor.innerHTML = '';
-            data.forEach(n => {
-                const div = document.createElement('div');
-                div.className = 'nota-item';
-                const fecha = new Date(n.created_at).toLocaleString();
-                div.innerHTML = `
-                    <strong>${n.annotation_type} — ${n.book_title || 'Sin título'}</strong>
-                    <p>${n.text_content}</p>
-                    <small>${fecha}</small>
-                `;
-                contenedor.appendChild(div);
-            });
-        }
-
-        window.onload = () => {
-            cargarBiblioteca();
-        };
-    </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Biblia TMA</title>
     <!-- Tailwind CSS -->
@@ -638,6 +55,7 @@
         let currentView = 'books'; 
         let selectedBook = null;
         let selectedPlan = null;
+        let allPlansCache = [];
         
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
         let currentTelegramId = tgUser?.id || 123456789;
@@ -798,18 +216,18 @@
             cargarFavoritos();
         }
 
-        // BUSCADOR
+        // BUSCADOR GENERAL
         function abrirBuscador() {
             currentView = 'search';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "🔍 Buscador Bíblico";
-            mainSubtitle.innerText = "Encuentra citas y textos exactos";
+            mainSubtitle.innerText = "Busca en Salmos, Proverbios y toda la Biblia";
             mainSubtitle.style.display = 'block';
 
             contentBox.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex gap-2">
-                        <input type="text" id="searchInput" placeholder="Ej: principio, amor, fe..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <input type="text" id="searchInput" placeholder="Ej: amor, fe, Jehová, sabiduría..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
                         <button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                     <div id="search-results" class="space-y-2 mt-4">
@@ -824,7 +242,7 @@
             const resultsContainer = document.getElementById('search-results');
             if (!query) return;
 
-            resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
+            resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando en Salmos, Proverbios...</div>';
             try {
                 const { data, error } = await supabaseClient
                     .from('bible_verses')
@@ -851,17 +269,18 @@
             }
         }
 
-        // --- PLANES DE LECTURA CON FECHAS Y CREACIÓN ---
+        // --- PLANES DE LECTURA CON FECHAS, HORA Y CREACIÓN ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "📅 Planes de Lectura";
-            mainSubtitle.innerText = "Selecciona o crea un devocional";
+            mainSubtitle.innerText = "Selecciona o busca un devocional";
             mainSubtitle.style.display = 'block';
 
             contentBox.innerHTML = `
-                <div class="mb-3">
+                <div class="space-y-2 mb-3">
                     <button onclick="mostrarFormularioCrearPlan()" class="w-full py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition shadow-sm">+ Crear Nuevo Plan</button>
+                    <input type="text" id="planSearchInput" oninput="filtrarPlanes()" placeholder="🔍 Buscar planes de lectura..." class="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
                 </div>
                 <div id="plans-list" class="space-y-3">
                     <div class="text-center py-6 opacity-65">Cargando planes...</div>
@@ -872,23 +291,36 @@
                 const { data, error } = await supabaseClient.from('reading_plans').select('*');
                 if (error) throw error;
                 
-                const listContainer = document.getElementById('plans-list');
-                if (!data || data.length === 0) {
-                    listContainer.innerHTML = '<p class="text-center opacity-60 py-5">No hay planes disponibles. ¡Crea el primero arriba!</p>';
-                    return;
-                }
-
-                listContainer.innerHTML = data.map(plan => `
-                    <div onclick="verDetallePlan('${plan.id}', '${plan.title}')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition">
-                        <h3 class="font-bold text-base">${plan.title}</h3>
-                        <p class="text-xs opacity-70">${plan.description || ''}</p>
-                        ${plan.start_date && plan.end_date ? `<div class="text-xs text-amber-500 font-medium mt-1">🗓️ ${plan.start_date} al ${plan.end_date}</div>` : ''}
-                        <span class="text-xs text-amber-500 font-semibold inline-block mt-2">Ver días del plan →</span>
-                    </div>
-                `).join('');
+                allPlansCache = data || [];
+                renderizarPlanes(allPlansCache);
             } catch (err) {
                 document.getElementById('plans-list').innerHTML = '<p class="text-center text-red-500">Error al cargar planes.</p>';
             }
+        }
+
+        function renderizarPlanes(planes) {
+            const listContainer = document.getElementById('plans-list');
+            if (!planes || planes.length === 0) {
+                listContainer.innerHTML = '<p class="text-center opacity-60 py-5">No se encontraron planes de lectura.</p>';
+                return;
+            }
+
+            listContainer.innerHTML = planes.map(plan => `
+                <div onclick="verDetallePlan('${plan.id}', '${plan.title}')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition">
+                    <h3 class="font-bold text-base">${plan.title}</h3>
+                    <p class="text-xs opacity-70">${plan.description || ''}</p>
+                    ${plan.start_date && plan.end_date ? `<div class="text-xs text-amber-500 font-medium mt-1">🗓️ ${plan.start_date} al ${plan.end_date} ${plan.start_time ? '⏰ ' + plan.start_time : ''}</div>` : (plan.start_time ? `<div class="text-xs text-amber-500 font-medium mt-1">⏰ Hora: ${plan.start_time}</div>` : '')}
+                    <span class="text-xs text-amber-500 font-semibold inline-block mt-2">Ver días del plan →</span>
+                </div>
+            `).join('');
+        }
+
+        function filtrarPlanes() {
+            const query = document.getElementById('planSearchInput').value.toLowerCase();
+            const filtrados = allPlansCache.filter(p => 
+                p.title.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query))
+            );
+            renderizarPlanes(filtrados);
         }
 
         function mostrarFormularioCrearPlan() {
@@ -917,6 +349,10 @@
                         </div>
                     </div>
                     <div>
+                        <label class="text-xs font-semibold opacity-70">Hora de Comienzo diaria</label>
+                        <input type="time" id="newPlanTime" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm">
+                    </div>
+                    <div>
                         <label class="text-xs font-semibold opacity-70">Días del plan (Ej: Día 1: Paz | Juan 14:27)</label>
                         <textarea id="newPlanDays" placeholder="Día 1 - Título | Pasaje&#10;Día 2 - Título | Pasaje" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
                     </div>
@@ -930,6 +366,7 @@
             const description = document.getElementById('newPlanDesc').value.trim();
             const start_date = document.getElementById('newPlanStart').value;
             const end_date = document.getElementById('newPlanEnd').value;
+            const start_time = document.getElementById('newPlanTime').value;
             const daysText = document.getElementById('newPlanDays').value.trim();
 
             if (!title || !daysText) {
@@ -938,16 +375,14 @@
             }
 
             try {
-                // 1. Insertar el plan principal con fechas
                 const { data: planData, error: planError } = await supabaseClient
                     .from('reading_plans')
-                    .insert([{ title, description, start_date, end_date }])
+                    .insert([{ title, description, start_date, end_date, start_time }])
                     .select();
 
                 if (planError) throw planError;
                 const planId = planData[0].id;
 
-                // 2. Procesar y parsear las líneas de los días
                 const lines = daysText.split('\n');
                 let dayCounter = 1;
                 for (let line of lines) {
@@ -970,7 +405,7 @@
                 cargarPlanes();
             } catch (err) {
                 console.error(err);
-                alert("Error al crear el plan. Asegúrate de añadir las columnas start_date y end_date en la tabla reading_plans si deseas guardarlas.");
+                alert("Error al crear el plan.");
             }
         }
 
@@ -1130,9 +565,10 @@
             mainSubtitle.style.display = 'block';
 
             contentBox.innerHTML = `
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-xs opacity-70">¡Pon a prueba tu conocimiento!</span>
-                    <button onclick="cargarTrivia()" class="px-3 py-1 bg-amber-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition">🔄 Nueva Partida</button>
+                <div class="mb-4">
+                    <button onclick="cargarTrivia()" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-sm shadow-md active:scale-95 transition flex items-center justify-center gap-2">
+                        🔄 Nueva Partida / Mezclar Preguntas
+                    </button>
                 </div>
                 <div id="trivia-questions-container" class="space-y-3">
                     <div class="text-center py-10 opacity-65">Mezclando preguntas aleatorias...</div>
@@ -1149,7 +585,7 @@
 
                 const shuffledData = data.sort(() => 0.5 - Math.random()).slice(0, 5);
 
-                contentBox.innerHTML = shuffledData.map((q, idx) => `
+                const preguntasHTML = shuffledData.map((q, idx) => `
                     <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm">
                         <p class="font-semibold text-sm">${idx + 1}. ${q.question_text}</p>
                         <div class="grid grid-cols-1 gap-2">
@@ -1161,6 +597,8 @@
                         <div id="trivia_feedback_${q.id}" class="text-xs font-bold pt-1"></div>
                     </div>
                 `).join('');
+
+                document.getElementById('trivia-questions-container').innerHTML = preguntasHTML;
             } catch (err) {
                 document.getElementById('trivia-questions-container').innerHTML = '<p class="text-center text-red-500">Error al cargar la trivia.</p>';
             }
