@@ -26,7 +26,7 @@
             <div class="w-12"></div>
         </header>
 
-        <!-- BARRA DE NAVEGACIÓN RÁPIDA (6 SECCIONES) -->
+        <!-- BARRA DE NAVEGACIÓN RÁPIDA -->
         <nav class="grid grid-cols-6 gap-1 mb-5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-center text-xs font-medium">
             <button onclick="cargarLibros()" class="py-2 rounded-lg bg-zinc-200 dark:bg-zinc-700 transition">📖 Biblia</button>
             <button onclick="abrirBuscador()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">🔍 Buscar</button>
@@ -36,7 +36,7 @@
             <button onclick="cargarTrivia()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">❓ Trivia</button>
         </nav>
 
-        <!-- ÚNICO CONTENEDOR DE DATOS -->
+        <!-- CONTENEDOR DE DATOS -->
         <div id="content-box" class="space-y-3">
             <div class="text-center py-10 opacity-65">Cargando...</div>
         </div>
@@ -56,12 +56,10 @@
         let selectedBook = null;
         let selectedPlan = null;
         
-        // Obtener datos del usuario real de Telegram o usar respaldo de prueba
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
         let currentTelegramId = tgUser?.id || 123456789;
         let currentUserName = tgUser?.first_name || 'Usuario Demo';
 
-        // Registrar usuario en la tabla 'users' automáticamente al iniciar
         async function registrarUsuario() {
             try {
                 await supabaseClient.from('users').upsert([{
@@ -80,7 +78,7 @@
         const mainTitle = document.getElementById('main-title');
         const mainSubtitle = document.getElementById('main-subtitle');
 
-        // 1. CARGAR LIBROS
+        // 1. BIBLIOTECA - LIBROS
         async function cargarLibros() {
             currentView = 'books';
             backBtn.classList.add('hidden');
@@ -91,11 +89,7 @@
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando libros...</div>';
 
             try {
-                const { data, error } = await supabaseClient
-                    .from('bible_books')
-                    .select('*')
-                    .order('id', { ascending: true });
-
+                const { data, error } = await supabaseClient.from('bible_books').select('*').order('id', { ascending: true });
                 if (error) throw error;
                 if (!data || data.length === 0) {
                     contentBox.innerHTML = '<p class="text-center opacity-60">No hay libros cargados.</p>';
@@ -116,11 +110,10 @@
             }
         }
 
-        // 2. CARGAR CAPÍTULOS
+        // 2. CAPÍTULOS
         async function seleccionarLibro(bookId, bookName) {
             selectedBook = { id: bookId, name: bookName };
             currentView = 'chapters';
-            
             backBtn.classList.remove('hidden');
             mainTitle.innerText = bookName;
             mainSubtitle.innerText = "Selecciona un capítulo";
@@ -128,11 +121,7 @@
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando capítulos...</div>';
 
             try {
-                const { data, error } = await supabaseClient
-                    .from('bible_verses')
-                    .select('chapter')
-                    .eq('book_id', bookId);
-
+                const { data, error } = await supabaseClient.from('bible_verses').select('chapter').eq('book_id', bookId);
                 if (error) throw error;
                 const chapters = [...new Set(data.map(item => item.chapter))].sort((a, b) => a - b);
 
@@ -150,7 +139,7 @@
             }
         }
 
-        // 3. CARGAR VERSÍCULOS + GUARDAR MARCADOR ⭐
+        // 3. VERSÍCULOS + MARCADOR ⭐ (Adaptado a verse_id)
         async function seleccionarCapitulo(chapterNumber) {
             currentView = 'verses';
             backBtn.classList.remove('hidden');
@@ -160,19 +149,13 @@
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando versículos...</div>';
 
             try {
-                const { data, error } = await supabaseClient
-                    .from('bible_verses')
-                    .select('*')
-                    .eq('book_id', selectedBook.id)
-                    .eq('chapter', chapterNumber)
-                    .order('verse', { ascending: true });
-
+                const { data, error } = await supabaseClient.from('bible_verses').select('*').eq('book_id', selectedBook.id).eq('chapter', chapterNumber).order('verse', { ascending: true });
                 if (error) throw error;
 
                 contentBox.innerHTML = data.map(v => `
                     <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 leading-relaxed text-sm flex justify-between items-start gap-2">
                         <div><span class="font-bold text-xs opacity-60 mr-1">${v.verse}</span> ${v.text}</div>
-                        <button onclick="guardarMarcador('${selectedBook.id}', ${chapterNumber}, ${v.verse}, '${v.text.replace(/'/g, "\\'")}')" class="text-xs opacity-50 hover:opacity-100 transition px-2 py-1 bg-zinc-200 dark:bg-zinc-700 rounded" title="Guardar marcador">⭐</button>
+                        <button onclick="guardarMarcador(${v.id})" class="text-xs opacity-50 hover:opacity-100 transition px-2 py-1 bg-zinc-200 dark:bg-zinc-700 rounded" title="Guardar marcador">⭐</button>
                     </div>
                 `).join('');
             } catch (err) {
@@ -180,28 +163,26 @@
             }
         }
 
-        // --- NUEVA FUNCIÓN: GUARDAR MARCADOR EN SUPABASE ---
-        async function guardarMarcador(bookId, chapter, verse, text) {
+        async function guardarMarcador(verseId) {
             try {
                 const { error } = await supabaseClient
                     .from('user_bookmarks')
                     .insert([{ 
                         telegram_id: currentTelegramId, 
-                        book_id: bookId, 
-                        chapter: chapter, 
-                        verse: verse,
-                        text: text 
+                        verse_id: verseId,
+                        color: 'default',
+                        note: ''
                     }]);
 
                 if (error) throw error;
                 alert("⭐ ¡Versículo guardado en tus favoritos!");
             } catch (err) {
                 console.error(err);
-                alert("No se pudo guardar el marcador. (Verifica si la tabla user_bookmarks tiene los campos telegram_id, book_id, chapter, verse, text)");
+                alert("No se pudo guardar el marcador.");
             }
         }
 
-        // --- NUEVA VISTA: CARGAR FAVORITOS DEL USUARIO ---
+        // FAVORITOS
         async function cargarFavoritos() {
             currentView = 'favorites';
             backBtn.classList.add('hidden');
@@ -214,7 +195,7 @@
             try {
                 const { data, error } = await supabaseClient
                     .from('user_bookmarks')
-                    .select('*, bible_books(name, modern_name)')
+                    .select('id, verse_id, bible_verses(chapter, verse, text, bible_books(name, modern_name))')
                     .eq('telegram_id', currentTelegramId)
                     .order('id', { ascending: false });
 
@@ -224,15 +205,20 @@
                     return;
                 }
 
-                contentBox.innerHTML = data.map(fav => `
-                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm space-y-1 shadow-sm">
-                        <div class="font-bold text-amber-600 dark:text-amber-400">
-                            ${fav.bible_books?.modern_name || fav.bible_books?.name || 'Libro'} ${fav.chapter}:${fav.verse}
+                contentBox.innerHTML = data.map(fav => {
+                    const v = fav.bible_verses;
+                    const bookName = v?.bible_books?.modern_name || v?.bible_books?.name || 'Biblia';
+                    return `
+                        <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm space-y-1 shadow-sm">
+                            <div class="font-bold text-amber-600 dark:text-amber-400">
+                                ${bookName} ${v?.chapter || 0}:${v?.verse || 0}
+                            </div>
+                            <div class="opacity-90">"${v?.text || ''}"</div>
                         </div>
-                        <div class="opacity-90">"${fav.text || 'Texto del versículo'}"</div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (err) {
+                console.error(err);
                 contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar los marcadores.</p>';
             }
         }
@@ -290,7 +276,7 @@
             }
         }
 
-        // PLANES DE LECTURA
+        // --- PLANES DE LECTURA (INGRESAR Y ANULAR) ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -360,9 +346,12 @@
                                 <span class="font-semibold">${d.title}</span>
                                 <div class="text-xs opacity-70 mt-0.5">Lectura: ${d.passage}</div>
                             </div>
-                            <button onclick="completarDiaPlan('${planId}', ${d.day_number})" id="btn_day_${d.day_number}" class="px-3 py-1.5 ${isCompleted ? 'bg-green-600 text-white' : 'bg-zinc-200 dark:bg-zinc-700'} rounded-lg text-xs font-semibold active:scale-95 transition">
-                                ${isCompleted ? '¡Completado! ✓' : 'Completar'}
-                            </button>
+                            <div>
+                                ${isCompleted 
+                                    ? `<button onclick="anularDiaPlan('${planId}', ${d.day_number})" id="btn_day_${d.day_number}" class="px-3 py-1.5 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">Anular</button>`
+                                    : `<button onclick="ingresarDiaPlan('${planId}', ${d.day_number})" id="btn_day_${d.day_number}" class="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">Ingresar</button>`
+                                }
+                            </div>
                         </div>
                     `;
                 }).join('');
@@ -371,10 +360,7 @@
             }
         }
 
-        async function completarDiaPlan(planId, dayNumber) {
-            const btn = document.getElementById(`btn_day_${dayNumber}`);
-            const box = document.getElementById(`plan_day_${dayNumber}`);
-
+        async function ingresarDiaPlan(planId, dayNumber) {
             try {
                 const { error } = await supabaseClient
                     .from('user_plan_progress')
@@ -386,19 +372,33 @@
                     }]);
 
                 if (error) throw error;
-
-                btn.innerText = "¡Completado! ✓";
-                btn.className = "px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold transition";
-                box.className = "p-3 rounded-lg bg-green-500/10 border border-green-500/40 flex justify-between items-center text-sm mb-2 transition";
-                
-                alert("📅 ¡Día guardado correctamente en tu progreso!");
+                // Recargar detalle para actualizar vista
+                verDetallePlan(planId, selectedPlan.title);
             } catch (err) {
                 console.error(err);
-                alert("No se pudo registrar el progreso.");
+                alert("No se pudo ingresar al plan.");
             }
         }
 
-        // PETICIONES DE ORACIÓN
+        async function anularDiaPlan(planId, dayNumber) {
+            try {
+                const { error } = await supabaseClient
+                    .from('user_plan_progress')
+                    .delete()
+                    .eq('telegram_id', currentTelegramId)
+                    .eq('plan_id', planId)
+                    .eq('current_day', dayNumber);
+
+                if (error) throw error;
+                // Recargar detalle para actualizar vista
+                verDetallePlan(planId, selectedPlan.title);
+            } catch (err) {
+                console.error(err);
+                alert("No se pudo anular el progreso.");
+            }
+        }
+
+        // ORACIÓN
         async function cargarOraciones() {
             currentView = 'prayer';
             backBtn.classList.add('hidden');
@@ -447,7 +447,7 @@
             }
         }
 
-        // TRIVIA BÍBLICA
+        // TRIVIA
         async function cargarTrivia() {
             currentView = 'trivia';
             backBtn.classList.add('hidden');
