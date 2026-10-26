@@ -221,17 +221,17 @@
             currentView = 'search';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "🔍 Buscador Bíblico";
-            mainSubtitle.innerText = "Busca en Salmos, Proverbios y toda la Biblia";
+            mainSubtitle.innerText = "Busca por palabras o libros";
             mainSubtitle.style.display = 'block';
 
             contentBox.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex gap-2">
-                        <input type="text" id="searchInput" placeholder="Ej: amor, fe, Jehová, sabiduría..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
-                        <button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl font-semibold text-sm">Buscar</button>
+                        <input type="text" id="searchInput" placeholder="Ej: Proverbios, amor, fe..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                     <div id="search-results" class="space-y-2 mt-4">
-                        <p class="text-center opacity-50 text-sm py-5">Escribe una palabra clave para buscar</p>
+                        <p class="text-center opacity-50 text-sm py-5">Escribe una palabra clave o libro para buscar</p>
                     </div>
                 </div>
             `;
@@ -242,7 +242,7 @@
             const resultsContainer = document.getElementById('search-results');
             if (!query) return;
 
-            resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando en Salmos, Proverbios...</div>';
+            resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
             try {
                 const { data, error } = await supabaseClient
                     .from('bible_verses')
@@ -252,7 +252,7 @@
 
                 if (error) throw error;
                 if (!data || data.length === 0) {
-                    resultsContainer.innerHTML = '<p class="text-center opacity-60 py-5">No se encontraron resultados.</p>';
+                    resultsContainer.innerHTML = `<p class="text-center opacity-60 py-5">No se encontraron resultados para "${query}".</p>`;
                     return;
                 }
 
@@ -269,7 +269,7 @@
             }
         }
 
-        // --- PLANES DE LECTURA (CON BUSCADOR, FECHAS Y HORA) ---
+        // --- PLANES DE LECTURA ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -280,7 +280,10 @@
             contentBox.innerHTML = `
                 <div class="space-y-2 mb-3">
                     <button onclick="mostrarFormularioCrearPlan()" class="w-full py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition shadow-sm">+ Crear Nuevo Plan</button>
-                    <input type="text" id="planSearchInput" oninput="filtrarPlanes()" placeholder="🔍 Buscar planes de lectura..." class="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                    <div class="flex gap-2">
+                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar planes..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <button onclick="filtrarPlanes()" class="px-4 py-2 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl font-semibold text-sm">Buscar</button>
+                    </div>
                 </div>
                 <div id="plans-list" class="space-y-3">
                     <div class="text-center py-6 opacity-65">Cargando planes...</div>
@@ -364,8 +367,8 @@
                         <input type="time" id="newPlanTime" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm">
                     </div>
                     <div>
-                        <label class="text-xs font-semibold opacity-70">Días del plan (Ej: Día 1: Paz | Juan 14:27)</label>
-                        <textarea id="newPlanDays" placeholder="Día 1 - Título | Pasaje&#10;Día 2 - Título | Pasaje" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
+                        <label class="text-xs font-semibold opacity-70">Días del plan (Ej: Día 1: Paz | Proverbios 3:5-6)</label>
+                        <textarea id="newPlanDays" placeholder="Día 1 - Título | Proverbios 3:5-6&#10;Día 2 - Título | Filipenses 4:6-7" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
                     </div>
                     <button onclick="guardarNuevoPlan()" class="w-full py-2.5 bg-green-600 text-white rounded-lg font-semibold text-sm active:scale-95 transition">Guardar Plan en Base de Datos</button>
                 </div>
@@ -416,7 +419,7 @@
                 cargarPlanes();
             } catch (err) {
                 console.error(err);
-                alert("Error al crear el plan. (Asegúrate de tener las columnas start_date, end_date y start_time en la tabla reading_plans si deseas guardarlas).");
+                alert("Error al crear el plan. Asegúrate de haber ejecutado el comando SQL para añadir las columnas de fecha y hora.");
             }
         }
 
@@ -517,7 +520,7 @@
             }
         }
 
-        // ORACIÓN
+        // --- ORACIÓN ---
         async function cargarOraciones() {
             currentView = 'prayer';
             backBtn.classList.add('hidden');
@@ -546,7 +549,12 @@
                     listContainer.innerHTML = '<p class="text-center opacity-60 py-4">No hay peticiones aún.</p>';
                     return;
                 }
-                listContainer.innerHTML = data.map(p => `<div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm"><p class="opacity-90">${p.request_text}</p></div>`).join('');
+                listContainer.innerHTML = data.map(p => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm flex justify-between items-start gap-2">
+                        <p class="opacity-90 flex-1">${p.request_text}</p>
+                        ${p.telegram_id == currentTelegramId ? `<button onclick="eliminarOracion(${p.id})" class="text-xs text-red-500 hover:underline shrink-0">Borrar</button>` : ''}
+                    </div>
+                `).join('');
             } catch (err) {
                 listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al cargar oraciones.</p>';
             }
@@ -567,7 +575,18 @@
             }
         }
 
-        // TRIVIA
+        async function eliminarOracion(id) {
+            try {
+                const { error } = await supabaseClient.from('prayer_requests').delete().eq('id', id).eq('telegram_id', currentTelegramId);
+                if (error) throw error;
+                obtenerListaOraciones();
+            } catch (err) {
+                console.error(err);
+                alert("No se pudo eliminar la petición.");
+            }
+        }
+
+        // --- TRIVIA ---
         async function cargarTrivia() {
             currentView = 'trivia';
             backBtn.classList.add('hidden');
@@ -600,10 +619,10 @@
                     <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm">
                         <p class="font-semibold text-sm">${idx + 1}. ${q.question_text}</p>
                         <div class="grid grid-cols-1 gap-2">
-                            <button onclick="responderTrivia(${q.id}, 'A', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">A) ${q.option_a}</button>
-                            <button onclick="responderTrivia(${q.id}, 'B', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">B) ${q.option_b}</button>
-                            <button onclick="responderTrivia(${q.id}, 'C', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">C) ${q.option_c}</button>
-                            <button onclick="responderTrivia(${q.id}, 'D', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">D) ${q.option_d}</button>
+                            <button id="btn_${q.id}_A" onclick="responderTrivia(${q.id}, 'A', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">A) ${q.option_a}</button>
+                            <button id="btn_${q.id}_B" onclick="responderTrivia(${q.id}, 'B', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">B) ${q.option_b}</button>
+                            <button id="btn_${q.id}_C" onclick="responderTrivia(${q.id}, 'C', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">C) ${q.option_c}</button>
+                            <button id="btn_${q.id}_D" onclick="responderTrivia(${q.id}, 'D', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">D) ${q.option_d}</button>
                         </div>
                         <div id="trivia_feedback_${q.id}" class="text-xs font-bold pt-1"></div>
                     </div>
@@ -620,9 +639,15 @@
             const buttons = document.querySelectorAll(`.option_btn_${qId}`);
             buttons.forEach(btn => btn.disabled = true);
 
+            const selectedBtn = document.getElementById(`btn_${qId}_${selectedOption}`);
+            const correctBtn = document.getElementById(`btn_${qId}_${correctOption}`);
+
             if (selectedOption === correctOption) {
+                selectedBtn.classList.add('bg-green-500/20', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
                 feedbackBox.innerHTML = '<span class="text-green-500">✨ ¡Respuesta Correcta!</span>';
             } else {
+                selectedBtn.classList.add('bg-red-500/20', 'border', 'border-red-500', 'text-red-600', 'dark:text-red-400');
+                correctBtn.classList.add('bg-green-500/20', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
                 feedbackBox.innerHTML = `<span class="text-red-500">❌ Incorrecto. La opción correcta era la ${correctOption}</span>`;
             }
         }
