@@ -216,22 +216,22 @@
             cargarFavoritos();
         }
 
-        // --- BUSCADOR CENTRAL INTELIGENTE (LIBROS, CITAS Y PALABRAS) ---
+        // --- BUSCADOR CENTRAL ROBUSTO Y PERFECTO ---
         function abrirBuscador() {
             currentView = 'search';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "🔍 Buscador Bíblico";
-            mainSubtitle.innerText = "Busca libros (ej: Proverbios), citas (ej: Hechos 16:21) o palabras";
+            mainSubtitle.innerText = "Busca libros (ej: Proverbios, Romanos) o palabras";
             mainSubtitle.style.display = 'block';
 
             contentBox.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex gap-2">
-                        <input type="text" id="searchInput" placeholder="Ej: Proverbios, Hechos 16:21, amor..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <input type="text" id="searchInput" placeholder="Ej: Proverbios, Romanos, amor..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
                         <button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                     <div id="search-results" class="space-y-2 mt-4">
-                        <p class="text-center opacity-50 text-sm py-5">Escribe un libro, cita o palabra clave</p>
+                        <p class="text-center opacity-50 text-sm py-5">Escribe el nombre de un libro o palabra clave</p>
                     </div>
                 </div>
             `;
@@ -245,45 +245,36 @@
             resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
             
             try {
-                let query = supabaseClient.from('bible_verses').select('chapter, verse, text, book_id, bible_books(id, name, modern_name)');
+                // 1. Verificar si el texto coincide exactamente o parcialmente con un libro de la Biblia
+                const { data: matchedBooks, error: bookError } = await supabaseClient
+                    .from('bible_books')
+                    .select('id, name, modern_name')
+                    .ilike('name', `%${rawQuery}%`);
 
-                // Detectar si es una cita exacta (Ej: Hechos 16:21 o Hechos 16)
-                const parts = rawQuery.split(' ');
-                const possibleBookName = parts[0];
-                const chapterAndVerse = parts[1] || '';
+                if (matchedBooks && matchedBooks.length > 0) {
+                    const bookIds = matchedBooks.map(b => b.id);
+                    const { data: verseData, error: verseError } = await supabaseClient
+                        .from('bible_verses')
+                        .select('chapter, verse, text, bible_books(name, modern_name)')
+                        .in('book_id', bookIds)
+                        .order('chapter', { ascending: true })
+                        .order('verse', { ascending: true })
+                        .limit(30);
 
-                if (chapterAndVerse.includes(':')) {
-                    // Búsqueda de capítulo y versículo exacto (ej: 16:21)
-                    const [ch, v] = chapterAndVerse.split(':');
-                    const { data: bookData } = await supabaseClient.from('bible_books').select('id').ilike('name', `%${possibleBookName}%`).limit(1);
-                    
-                    if (bookData && bookData.length > 0) {
-                        const { data, error } = await query.eq('book_id', bookData[0].id).eq('chapter', parseInt(ch)).eq('verse', parseInt(v));
-                        if (error) throw error;
-                        mostrarResultadosBusqueda(data, resultsContainer, rawQuery);
-                        return;
-                    }
-                }
-
-                // Intentar buscar si el texto coincide con el nombre de un libro (Ej: Proverbios, Romanos)
-                const { data: booksMatch } = await supabaseClient.from('bible_books').select('id').ilike('name', `%rawQuery%`);
-                if (booksMatch && booksMatch.length > 0) {
-                    const bookIds = booksMatch.map(b => b.id);
-                    const { data, error } = await query.in('book_id', bookIds).limit(30);
-                    if (error) throw error;
-                    mostrarResultadosBusqueda(data, resultsContainer, rawQuery);
+                    if (verseError) throw verseError;
+                    mostrarResultadosBusqueda(verseData, resultsContainer, rawQuery);
                     return;
                 }
 
-                // Búsqueda por palabra clave general en el texto de los versículos
-                const { data, error } = await supabaseClient
+                // 2. Si no es un libro, buscar por palabra clave dentro del texto de los versículos
+                const { data: textData, error: textError } = await supabaseClient
                     .from('bible_verses')
                     .select('chapter, verse, text, bible_books(name, modern_name)')
                     .ilike('text', `%${rawQuery}%`)
                     .limit(30);
 
-                if (error) throw error;
-                mostrarResultadosBusqueda(data, resultsContainer, rawQuery);
+                if (textError) throw textError;
+                mostrarResultadosBusqueda(textData, resultsContainer, rawQuery);
 
             } catch (err) {
                 console.error(err);
