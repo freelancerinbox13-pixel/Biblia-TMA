@@ -49,7 +49,7 @@
 </head>
 <body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans pb-20 relative overflow-x-hidden">
 
-    <!-- CONTENEDOR PARA LA SUPER EXPLOSIÓN DE 200 ESTRELLAS FUGACES -->
+    <!-- CONTENEDOR PARA LA GRAN EXPLOSIÓN DE 200 ESTRELLAS FUGACES -->
     <div id="explosion-overlay" class="hidden"></div>
 
     <div class="max-w-md mx-auto">
@@ -100,7 +100,7 @@
         let currentTelegramId = tgUser?.id || 123456789;
         let currentUserName = tgUser?.first_name || 'Usuario Demo';
 
-        let userStats = JSON.parse(localStorage.getItem(`trivia_stats_${currentTelegramId}`)) || { stars: 103, chalices: 5 };
+        let userStats = JSON.parse(localStorage.getItem(`trivia_stats_${currentTelegramId}`)) || { stars: 145, chalices: 6 };
 
         function guardarStats() {
             localStorage.setItem(`trivia_stats_${currentTelegramId}`, JSON.stringify(userStats));
@@ -704,7 +704,7 @@
             }
         }
 
-        // --- TRIVIA AVANZADA CON 200 ESTRELLAS FUGACES Y BOTÓN CONECTADO ---
+        // --- TRIVIA AVANZADA CON 200 ESTRELLAS FUGACES Y BOTÓN ÚNICO INTERACTIVO ---
         let currentTriviaQuestions = [];
         let triviaAnsweredCount = 0;
         let roundCorrects = 0;
@@ -735,13 +735,13 @@
                         </div>
                     </div>
                 </div>
-                <!-- BOTÓN DE PREGUNTA ALEATORIA / NUEVA PARTIDA CONECTADO -->
-                <div class="flex justify-between items-center mb-3 bg-zinc-100 dark:bg-zinc-800 p-2.5 rounded-xl">
-                    <span class="text-xs font-semibold opacity-80">Pregunta aleatoria</span>
-                    <button onclick="cargarTrivia()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold active:scale-95 transition flex items-center gap-1 shadow-sm">
-                        🔄 Nueva Partida
-                    </button>
-                </div>
+
+                <!-- BOTÓN ÚNICO INTEGRADO DE NUEVA PARTIDA / PREGUNTA ALEATORIA -->
+                <button onclick="cargarTrivia()" class="w-full mb-4 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-sm active:scale-98 transition flex items-center justify-between shadow-md">
+                    <span class="flex items-center gap-2">🎲 Pregunta aleatoria</span>
+                    <span class="bg-amber-700/60 px-3 py-1 rounded-lg text-xs flex items-center gap-1">🔄 Nueva Partida</span>
+                </button>
+
                 <div id="trivia-questions-container" class="space-y-3">
                     <div class="text-center py-10 opacity-65">Cargando preguntas aleatorias...</div>
                 </div>
@@ -826,7 +826,6 @@
 
                         mensajeFinal += ` ¡Ronda perfecta! Has ganado 🍷 **¡Un Cáliz sagrado y un bonus de +${bonusPerfecto} Estrellas ⭐!**`;
                         
-                        // LANZAR LA GRAN EXPLOSIÓN DE 200 ESTRELLAS FUGACES
                         lanzarExplosionEstrellasFugaces();
                     }
 
@@ -858,14 +857,14 @@
             `;
             overlay.appendChild(messageBox);
 
-            const totalStars = 200; // ¡200 estrellas fugaces masivas!
+            const totalStars = 200; // 200 estrellas fugaces gigantes
             for (let i = 0; i < totalStars; i++) {
                 const star = document.createElement('div');
                 star.className = 'burst-particle';
                 star.innerText = i % 3 === 0 ? '✨' : (i % 3 === 1 ? '⭐' : '🌟');
                 
                 const angle = Math.random() * Math.PI * 2;
-                const distance = 160 + Math.random() * 380; // Cubre toda la pantalla por completo
+                const distance = 160 + Math.random() * 380;
                 const dx = Math.cos(angle) * distance;
                 const dy = Math.sin(angle) * distance;
                 const scale = 0.4 + Math.random() * 2.5;
