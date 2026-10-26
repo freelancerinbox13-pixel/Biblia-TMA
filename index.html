@@ -13,25 +13,25 @@
     <style>
         @keyframes burstStar {
             0% {
-                transform: translate(0, 0) scale(0.3) rotate(0deg);
+                transform: translate(0, 0) scale(0.2) rotate(0deg);
                 opacity: 1;
             }
             100% {
-                transform: translate(var(--dx), var(--dy)) scale(var(--scale)) rotate(360deg);
+                transform: translate(var(--dx), var(--dy)) scale(var(--scale)) rotate(720deg);
                 opacity: 0;
             }
         }
         @keyframes fadeInOut {
-            0% { transform: scale(0.7); opacity: 0; }
-            20% { transform: scale(1.05); opacity: 1; }
-            80% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(1.1); opacity: 0; }
+            0% { transform: scale(0.6); opacity: 0; }
+            15% { transform: scale(1.1); opacity: 1; }
+            85% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.15); opacity: 0; }
         }
         .burst-particle {
             position: absolute;
             top: 50%;
             left: 50%;
-            animation: burstStar 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+            animation: burstStar 1.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
             pointer-events: none;
         }
         .blessing-overlay {
@@ -40,16 +40,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.7);
             z-index: 100;
             pointer-events: none;
-            animation: fadeInOut 2.5s ease-in-out forwards;
+            animation: fadeInOut 2.8s ease-in-out forwards;
         }
     </style>
 </head>
 <body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans pb-20 relative overflow-x-hidden">
 
-    <!-- CONTENEDOR PARA LA EXPLOSIÓN DE ESTRELLAS FUGACES Y MENSAJE CENTRAL -->
+    <!-- CONTENEDOR PARA LA GRAN EXPLOSIÓN DE ESTRELLAS FUGACES -->
     <div id="explosion-overlay" class="hidden"></div>
 
     <div class="max-w-md mx-auto">
@@ -704,7 +704,7 @@
             }
         }
 
-        // --- TRIVIA AVANZADA CON EXPLOSIÓN DE 30+ ESTRELLAS FUGACES Y MENSAJE CENTRAL ---
+        // --- TRIVIA AVANZADA CON 80+ ESTRELLAS FUGACES Y MENSAJE CENTRAL ---
         let currentTriviaQuestions = [];
         let triviaAnsweredCount = 0;
         let roundCorrects = 0;
@@ -788,16 +788,19 @@
             const selectedBtn = document.getElementById(`btn_${qId}_${selectedOption}`);
             const correctBtn = document.getElementById(`btn_${qId}_${correctOption}`);
 
+            const rewardStars = 5;
+            const penaltyStars = 3;
+
             if (selectedOption === correctOption) {
                 selectedBtn.classList.add('bg-green-500/25', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
-                feedbackBox.innerHTML = '<span class="text-green-500">✨ ¡Correcto! (+1 Estrellas ⭐)</span>';
-                userStats.stars += 1;
+                feedbackBox.innerHTML = `<span class="text-green-500">✨ ¡Correcto! (+${rewardStars} Estrellas ⭐)</span>`;
+                userStats.stars += rewardStars;
                 roundCorrects++;
             } else {
                 selectedBtn.classList.add('bg-red-500/25', 'border', 'border-red-500', 'text-red-600', 'dark:text-red-400');
                 correctBtn.classList.add('bg-green-500/25', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
-                feedbackBox.innerHTML = `<span class="text-red-500">❌ Incorrecto (-1 Estrella ⭐). Era la ${correctOption}</span>`;
-                userStats.stars = Math.max(0, userStats.stars - 1);
+                feedbackBox.innerHTML = `<span class="text-red-500">❌ Incorrecto (-${penaltyStars} Estrellas ⭐). Era la ${correctOption}</span>`;
+                userStats.stars = Math.max(0, userStats.stars - penaltyStars);
             }
 
             guardarStats();
@@ -811,11 +814,15 @@
                     
                     if (roundCorrects === currentTriviaQuestions.length) {
                         userStats.chalices += 1;
+                        const bonusPerfecto = 20;
+                        userStats.stars += bonusPerfecto;
                         guardarStats();
-                        document.getElementById('global-chalices-display').innerText = userStats.chalices;
-                        mensajeFinal += " ¡Ronda perfecta! Has ganado 🍷 **¡Un Cáliz sagrado!**";
                         
-                        // LANZAR EFECTO DE EXPLOSIÓN DE 30+ ESTRELLAS FUGACES Y MENSAJE EN MEDIO
+                        document.getElementById('global-chalices-display').innerText = userStats.chalices;
+                        document.getElementById('global-stars-display').innerText = userStats.stars;
+
+                        mensajeFinal += ` ¡Ronda perfecta! Has ganado 🍷 **¡Un Cáliz sagrado y un bonus de +${bonusPerfecto} Estrellas ⭐!**`;
+                        
                         lanzarExplosionEstrellasFugaces();
                     }
 
@@ -832,35 +839,32 @@
             }
         }
 
-        // FUNCIÓN DE EXPLOSIÓN MASIVA DE ESTRELLAS FUGACES DESDE EL CENTRO
+        // EXPLOSIÓN MASIVA DE 80 ESTRELLAS FUGACES Y MENSAJE CENTRAL
         function lanzarExplosionEstrellasFugaces() {
             const overlay = document.getElementById('explosion-overlay');
             overlay.innerHTML = '';
-            overlay.className = 'blessing-overlay'; // Activa el contenedor central semitransparente
+            overlay.className = 'blessing-overlay';
 
-            // Mensaje en medio de la pantalla con animación
             const messageBox = document.createElement('div');
             messageBox.className = 'bg-amber-500 text-zinc-950 px-6 py-4 rounded-2xl shadow-2xl text-center space-y-1 z-50 border-2 border-yellow-200';
             messageBox.innerHTML = `
                 <div class="text-4xl">🌟✨🙏✨🌟</div>
                 <h2 class="text-xl font-extrabold tracking-wide">¡En hora buena, Dios te bendice!</h2>
-                <p class="text-xs font-medium opacity-90">¡Ronda completada con éxito!</p>
+                <p class="text-xs font-medium opacity-90">¡Ronda perfecta completada!</p>
             `;
             overlay.appendChild(messageBox);
 
-            // Generar al menos 35 estrellas fugaces disparadas en todas direcciones
-            const totalStars = 35;
+            const totalStars = 80; // ¡80 estrellas fugaces festivas!
             for (let i = 0; i < totalStars; i++) {
                 const star = document.createElement('div');
                 star.className = 'burst-particle';
-                star.innerText = i % 2 === 0 ? '⭐' : '✨';
+                star.innerText = i % 3 === 0 ? '✨' : (i % 3 === 1 ? '⭐' : '🌟');
                 
-                // Ángulo y distancia aleatoria para simular la explosión en círculo
                 const angle = Math.random() * Math.PI * 2;
-                const distance = 100 + Math.random() * 250; // Distancia de vuelo
+                const distance = 140 + Math.random() * 320; // Mayor alcance en pantalla
                 const dx = Math.cos(angle) * distance;
                 const dy = Math.sin(angle) * distance;
-                const scale = 0.5 + Math.random() * 1.5; // Tamaños variados
+                const scale = 0.5 + Math.random() * 2.2; // Tamaños muy variados
 
                 star.style.setProperty('--dx', `${dx}px`);
                 star.style.setProperty('--dy', `${dy}px`);
@@ -869,11 +873,10 @@
                 overlay.appendChild(star);
             }
 
-            // Desvanecer y ocultar el overlay después de 2.5 segundos
             setTimeout(() => {
                 overlay.className = 'hidden';
                 overlay.innerHTML = '';
-            }, 2500);
+            }, 2800);
         }
 
         function volverAtras() {
