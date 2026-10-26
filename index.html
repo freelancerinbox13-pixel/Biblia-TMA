@@ -216,60 +216,98 @@
             cargarFavoritos();
         }
 
-        // BUSCADOR GENERAL
+        // --- BUSCADOR CENTRAL INTELIGENTE (LIBROS, CITAS Y PALABRAS) ---
         function abrirBuscador() {
             currentView = 'search';
             backBtn.classList.add('hidden');
             mainTitle.innerText = "🔍 Buscador Bíblico";
-            mainSubtitle.innerText = "Busca por palabras o libros";
+            mainSubtitle.innerText = "Busca libros (ej: Proverbios), citas (ej: Hechos 16:21) o palabras";
             mainSubtitle.style.display = 'block';
 
             contentBox.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex gap-2">
-                        <input type="text" id="searchInput" placeholder="Ej: Proverbios, amor, fe..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <input type="text" id="searchInput" placeholder="Ej: Proverbios, Hechos 16:21, amor..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
                         <button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                     <div id="search-results" class="space-y-2 mt-4">
-                        <p class="text-center opacity-50 text-sm py-5">Escribe una palabra clave o libro para buscar</p>
+                        <p class="text-center opacity-50 text-sm py-5">Escribe un libro, cita o palabra clave</p>
                     </div>
                 </div>
             `;
         }
 
         async function ejecutarBusqueda() {
-            const query = document.getElementById('searchInput').value.trim();
+            const rawQuery = document.getElementById('searchInput').value.trim();
             const resultsContainer = document.getElementById('search-results');
-            if (!query) return;
+            if (!rawQuery) return;
 
             resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
+            
             try {
-                const { data, error } = await supabaseClient
-                    .from('bible_verses')
-                    .select('chapter, verse, text, bible_books(name, modern_name)')
-                    .ilike('text', `%${query}%`)
-                    .limit(25);
+                let query = supabaseClient.from('bible_verses').select('chapter, verse, text, book_id, bible_books(id, name, modern_name)');
 
-                if (error) throw error;
-                if (!data || data.length === 0) {
-                    resultsContainer.innerHTML = `<p class="text-center opacity-60 py-5">No se encontraron resultados para "${query}".</p>`;
+                // Detectar si es una cita exacta (Ej: Hechos 16:21 o Hechos 16)
+                const parts = rawQuery.split(' ');
+                const possibleBookName = parts[0];
+                const chapterAndVerse = parts[1] || '';
+
+                if (chapterAndVerse.includes(':')) {
+                    // Búsqueda de capítulo y versículo exacto (ej: 16:21)
+                    const [ch, v] = chapterAndVerse.split(':');
+                    const { data: bookData } = await supabaseClient.from('bible_books').select('id').ilike('name', `%${possibleBookName}%`).limit(1);
+                    
+                    if (bookData && bookData.length > 0) {
+                        const { data, error } = await query.eq('book_id', bookData[0].id).eq('chapter', parseInt(ch)).eq('verse', parseInt(v));
+                        if (error) throw error;
+                        mostrarResultadosBusqueda(data, resultsContainer, rawQuery);
+                        return;
+                    }
+                }
+
+                // Intentar buscar si el texto coincide con el nombre de un libro (Ej: Proverbios, Romanos)
+                const { data: booksMatch } = await supabaseClient.from('bible_books').select('id').ilike('name', `%rawQuery%`);
+                if (booksMatch && booksMatch.length > 0) {
+                    const bookIds = booksMatch.map(b => b.id);
+                    const { data, error } = await query.in('book_id', bookIds).limit(30);
+                    if (error) throw error;
+                    mostrarResultadosBusqueda(data, resultsContainer, rawQuery);
                     return;
                 }
 
-                resultsContainer.innerHTML = data.map(item => `
-                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm">
-                        <div class="font-bold text-amber-600 dark:text-amber-400 mb-1">
-                            ${item.bible_books?.modern_name || item.bible_books?.name || 'Libro'} ${item.chapter}:${item.verse}
-                        </div>
-                        <div class="opacity-90">"${item.text}"</div>
-                    </div>
-                `).join('');
+                // Búsqueda por palabra clave general en el texto de los versículos
+                const { data, error } = await supabaseClient
+                    .from('bible_verses')
+                    .select('chapter, verse, text, bible_books(name, modern_name)')
+                    .ilike('text', `%${rawQuery}%`)
+                    .limit(30);
+
+                if (error) throw error;
+                mostrarResultadosBusqueda(data, resultsContainer, rawQuery);
+
             } catch (err) {
+                console.error(err);
                 resultsContainer.innerHTML = '<p class="text-center text-red-500">Error en la búsqueda.</p>';
             }
         }
 
-        // --- PLANES DE LECTURA (BÚSQUEDA PROFUNDA Y BOTÓN DE RESTABLECER) ---
+        function mostrarResultadosBusqueda(data, container, query) {
+            if (!data || data.length === 0) {
+                container.innerHTML = `<p class="text-center opacity-60 py-5">No se encontraron resultados para "${query}".</p>`;
+                return;
+            }
+
+            container.innerHTML = data.map(item => `
+                <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm shadow-sm">
+                    <div class="font-bold text-amber-600 dark:text-amber-400 mb-1">
+                        ${item.bible_books?.modern_name || item.bible_books?.name || 'Libro'} ${item.chapter}:${item.verse}
+                    </div>
+                    <div class="opacity-90">"${item.text}"</div>
+                </div>
+            `).join('');
+        }
+
+        // --- PLANES DE LECTURA ---
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -281,8 +319,8 @@
                 <div class="space-y-2 mb-3">
                     <button onclick="mostrarFormularioCrearPlan()" class="w-full py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition shadow-sm">+ Crear Nuevo Plan</button>
                     <div class="flex gap-2">
-                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar por título o pasaje (ej: Romanos)..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
-                        <button onclick="filtrarPlanes()" class="px-4 py-2 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
+                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar planes o pasajes..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
+                        <button onclick="ejecutarBusquedaPlanes()" class="px-4 py-2 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
                     </div>
                 </div>
                 <div id="plans-list" class="space-y-3">
@@ -323,25 +361,23 @@
             `).join('');
         }
 
-        async function filtrarPlanes() {
+        async function ejecutarBusquedaPlanes() {
             const query = document.getElementById('planSearchInput').value.toLowerCase().trim();
             const listContainer = document.getElementById('plans-list');
-            
+
             if (!query) {
                 renderizarPlanes(allPlansCache);
                 return;
             }
 
-            listContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando planes y pasajes...</div>';
+            listContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando en planes y pasajes...</div>';
 
             try {
-                // 1. Coincidencia en título o descripción
                 let matchedPlans = allPlansCache.filter(p => 
                     (p.title && p.title.toLowerCase().includes(query)) || 
                     (p.description && p.description.toLowerCase().includes(query))
                 );
 
-                // 2. Coincidencia en los pasajes de los días dentro de Supabase
                 const { data: daysData } = await supabaseClient
                     .from('reading_plan_days')
                     .select('plan_id')
@@ -360,7 +396,7 @@
                 renderizarPlanes(matchedPlans);
             } catch (err) {
                 console.error(err);
-                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al buscar en los planes.</p>';
+                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al realizar la búsqueda.</p>';
             }
         }
 
