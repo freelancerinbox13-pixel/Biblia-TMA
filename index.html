@@ -139,7 +139,7 @@
             }
         }
 
-        // 3. VERSÍCULOS + MARCADOR ⭐ (Adaptado a verse_id)
+        // 3. VERSÍCULOS + MARCADOR ⭐ (Utilizando color y note)
         async function seleccionarCapitulo(chapterNumber) {
             currentView = 'verses';
             backBtn.classList.remove('hidden');
@@ -170,8 +170,8 @@
                     .insert([{ 
                         telegram_id: currentTelegramId, 
                         verse_id: verseId,
-                        color: 'default',
-                        note: ''
+                        color: 'amber', // Aprovechando tu columna color
+                        note: 'Favorito desde la app' // Aprovechando tu columna note
                     }]);
 
                 if (error) throw error;
@@ -195,7 +195,7 @@
             try {
                 const { data, error } = await supabaseClient
                     .from('user_bookmarks')
-                    .select('id, verse_id, bible_verses(chapter, verse, text, bible_books(name, modern_name))')
+                    .select('id, verse_id, color, note, bible_verses(chapter, verse, text, bible_books(name, modern_name))')
                     .eq('telegram_id', currentTelegramId)
                     .order('id', { ascending: false });
 
@@ -209,9 +209,10 @@
                     const v = fav.bible_verses;
                     const bookName = v?.bible_books?.modern_name || v?.bible_books?.name || 'Biblia';
                     return `
-                        <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm space-y-1 shadow-sm">
-                            <div class="font-bold text-amber-600 dark:text-amber-400">
-                                ${bookName} ${v?.chapter || 0}:${v?.verse || 0}
+                        <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm space-y-1 shadow-sm border-l-4 border-amber-500">
+                            <div class="font-bold text-amber-600 dark:text-amber-400 flex justify-between">
+                                <span>${bookName} ${v?.chapter || 0}:${v?.verse || 0}</span>
+                                ${fav.note ? `<span class="text-xs opacity-60 italic">${fav.note}</span>` : ''}
                             </div>
                             <div class="opacity-90">"${v?.text || ''}"</div>
                         </div>
@@ -276,7 +277,7 @@
             }
         }
 
-        // --- PLANES DE LECTURA (INGRESAR Y ANULAR) ---
+        // PLANES DE LECTURA
         async function cargarPlanes() {
             currentView = 'plans';
             backBtn.classList.add('hidden');
@@ -348,8 +349,8 @@
                             </div>
                             <div>
                                 ${isCompleted 
-                                    ? `<button onclick="anularDiaPlan('${planId}', ${d.day_number})" id="btn_day_${d.day_number}" class="px-3 py-1.5 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">Anular</button>`
-                                    : `<button onclick="ingresarDiaPlan('${planId}', ${d.day_number})" id="btn_day_${d.day_number}" class="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">Ingresar</button>`
+                                    ? `<button onclick="anularDiaPlan('${planId}', ${d.day_number})" class="px-3 py-1.5 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">Anular</button>`
+                                    : `<button onclick="ingresarDiaPlan('${planId}', ${d.day_number})" class="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">Ingresar</button>`
                                 }
                             </div>
                         </div>
@@ -362,6 +363,13 @@
 
         async function ingresarDiaPlan(planId, dayNumber) {
             try {
+                await supabaseClient
+                    .from('user_plan_progress')
+                    .delete()
+                    .eq('telegram_id', currentTelegramId)
+                    .eq('plan_id', planId)
+                    .eq('current_day', dayNumber);
+
                 const { error } = await supabaseClient
                     .from('user_plan_progress')
                     .insert([{ 
@@ -372,7 +380,6 @@
                     }]);
 
                 if (error) throw error;
-                // Recargar detalle para actualizar vista
                 verDetallePlan(planId, selectedPlan.title);
             } catch (err) {
                 console.error(err);
@@ -390,7 +397,6 @@
                     .eq('current_day', dayNumber);
 
                 if (error) throw error;
-                // Recargar detalle para actualizar vista
                 verDetallePlan(planId, selectedPlan.title);
             } catch (err) {
                 console.error(err);
