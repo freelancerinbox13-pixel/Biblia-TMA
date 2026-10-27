@@ -49,7 +49,7 @@
 </head>
 <body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans pb-20 relative overflow-x-hidden">
 
-    <!-- CONTENEDOR PARA LA GRAN EXPLOSIÓN DE 200 ESTRELLAS FUGACES -->
+    <!-- CONTENEDOR PARA LA GRAN EXPLOSIÓN DE ESTRELLAS FUGACES -->
     <div id="explosion-overlay" class="hidden"></div>
 
     <div class="max-w-md mx-auto">
@@ -137,6 +137,7 @@
             };
         }
 
+        // --- 1. BIBLIOTECA - LIBROS + PALABRA DEL DÍA FIJA POR 24H ---
         async function cargarLibros() {
             currentView = 'books';
             backBtn.classList.add('hidden');
@@ -144,17 +145,20 @@
             mainSubtitle.innerText = "Tu espacio de lectura en Telegram";
             mainSubtitle.style.display = 'block';
             
-            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando libros...</div>';
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando contenido...</div>';
 
             try {
+                // Obtener Palabra del Día de las últimas 24h o generar una nueva
+                const dailyVerseHTML = await obtenerPalabraDelDiaHTML();
+
                 const { data, error } = await supabaseClient.from('bible_books').select('*').order('id', { ascending: true });
                 if (error) throw error;
                 if (!data || data.length === 0) {
-                    contentBox.innerHTML = '<p class="text-center opacity-60">No hay libros cargados.</p>';
+                    contentBox.innerHTML = dailyVerseHTML + '<p class="text-center opacity-60">No hay libros cargados.</p>';
                     return;
                 }
 
-                contentBox.innerHTML = data.map(book => `
+                const librosHTML = data.map(book => `
                     <div onclick="seleccionarLibro('${book.id}', '${book.name}')" class="flex items-center justify-between p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 active:scale-98 transition cursor-pointer shadow-sm">
                         <div>
                             <span class="font-semibold text-base">${book.name}</span>
@@ -163,11 +167,70 @@
                         <span class="opacity-40 text-lg">›</span>
                     </div>
                 `).join('');
+
+                contentBox.innerHTML = dailyVerseHTML + '<div class="space-y-2 mt-4">' + librosHTML + '</div>';
             } catch (err) {
-                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar los libros.</p>';
+                console.error(err);
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar la biblioteca.</p>';
             }
         }
 
+        async function obtenerPalabraDelDiaHTML() {
+            const todayStr = new Date().toISOString().split('T')[0]; // Fecha actual (Ej: 2026-10-27)
+            let dailyData = JSON.parse(localStorage.getItem('bible_daily_verse'));
+
+            // Si no existe o cambió de fecha, buscamos uno nuevo de la base de datos
+            if (!dailyData || dailyData.date !== todayStr) {
+                try {
+                    // Seleccionar un versículo al azar de la base de datos
+                    const { data, error } = await supabaseClient
+                        .from('bible_verses')
+                        .select('chapter, verse, text, bible_books(name, modern_name)')
+                        .limit(100);
+
+                    if (!error && data && data.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * data.length);
+                        const v = data[randomIndex];
+                        dailyData = {
+                            date: todayStr,
+                            book: v.bible_books?.modern_name || v.bible_books?.name || 'Escritura',
+                            chapter: v.chapter,
+                            verse: v.verse,
+                            text: v.text
+                        };
+                        localStorage.setItem('bible_daily_verse', JSON.stringify(dailyData));
+                    }
+                } catch (e) {
+                    console.error("Error al obtener palabra del día", e);
+                }
+            }
+
+            if (!dailyData) return '';
+
+            return `
+                <div class="p-4 rounded-2xl bg-gradient-to-br from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/40 shadow-md space-y-2 relative overflow-hidden">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                            🌅 Palabra del Día
+                        </span>
+                        <span class="text-[10px] opacity-60 font-medium">Actualizado hoy</span>
+                    </div>
+                    <p class="text-sm italic opacity-90 font-serif leading-relaxed">
+                        "${dailyData.text}"
+                    </p>
+                    <div class="flex justify-between items-center pt-1">
+                        <span class="text-xs font-extrabold text-amber-600 dark:text-amber-400">
+                            📖 ${dailyData.book} ${dailyData.chapter}:${dailyData.verse}
+                        </span>
+                        <button onclick="guardarMarcador('${dailyData.book}', ${dailyData.chapter}, ${dailyData.verse}, '${dailyData.text.replace(/'/g, "\\'")}')" class="text-xs px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 dark:text-amber-400 rounded-lg font-semibold transition active:scale-95">
+                            ⭐ Guardar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 2. CAPÍTULOS
         async function seleccionarLibro(bookId, bookName) {
             selectedBook = { id: bookId, name: bookName };
             currentView = 'chapters';
@@ -196,6 +259,7 @@
             }
         }
 
+        // 3. VERSÍCULOS + MARCADOR ⭐
         async function seleccionarCapitulo(chapterNumber) {
             currentView = 'verses';
             backBtn.classList.remove('hidden');
