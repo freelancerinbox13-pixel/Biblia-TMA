@@ -65,9 +65,10 @@
             <div class="w-12"></div>
         </header>
 
-        <!-- BARRA DE NAVEGACIÓN RÁPIDA -->
-        <nav class="grid grid-cols-6 gap-1 mb-5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-center text-xs font-medium">
+        <!-- BARRA DE NAVEGACIÓN RÁPIDA (ACTUALIZADA CON APÓCRIFOS) -->
+        <nav class="grid grid-cols-7 gap-1 mb-5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-center text-xs font-medium">
             <button onclick="cargarLibros()" class="py-2 rounded-lg bg-zinc-200 dark:bg-zinc-700 transition">📖 Biblia</button>
+            <button onclick="cargarApocrifos()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">📜 Apócrifos</button>
             <button onclick="abrirBuscador()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">🔍 Buscar</button>
             <button onclick="cargarFavoritos()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">⭐ Favoritos</button>
             <button onclick="cargarPlanes()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">📅 Planes</button>
@@ -95,6 +96,7 @@
         let selectedBook = null;
         let selectedPlan = null;
         let allPlansCache = [];
+        let isApocryphaMode = false; // Bandera para diferenciar entre Biblia y Apócrifos
         
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
         let currentTelegramId = tgUser?.id || 123456789;
@@ -137,9 +139,10 @@
             };
         }
 
-        // --- 1. BIBLIOTECA - LIBROS + PALABRA DEL DÍA FIJA POR 24H ---
+        // --- 1. BIBLIOTECA - LIBROS + PALABRA DEL DÍA ---
         async function cargarLibros() {
             currentView = 'books';
+            isApocryphaMode = false;
             backBtn.classList.add('hidden');
             mainTitle.innerText = "📖 Biblia TMA";
             mainSubtitle.innerText = "Tu espacio de lectura en Telegram";
@@ -148,7 +151,6 @@
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando contenido...</div>';
 
             try {
-                // Obtener Palabra del Día de las últimas 24h o generar una nueva
                 const dailyVerseHTML = await obtenerPalabraDelDiaHTML();
 
                 const { data, error } = await supabaseClient.from('bible_books').select('*').order('id', { ascending: true });
@@ -175,14 +177,47 @@
             }
         }
 
+        // --- APÓCRIFOS Y TEXTOS HISTÓRICOS ---
+        async function cargarApocrifos() {
+            currentView = 'apocrypha_list';
+            isApocryphaMode = true;
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "📜 Textos Apócrifos e Históricos";
+            mainSubtitle.innerText = "Evangelios y escritos antiguos";
+            mainSubtitle.style.display = 'block';
+            
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando textos especiales...</div>';
+
+            try {
+                const { data, error } = await supabaseClient.from('apocrypha_books').select('*').order('id', { ascending: true });
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">No hay textos apócrifos cargados todavía.</p>';
+                    return;
+                }
+
+                contentBox.innerHTML = '<div class="space-y-2">' + data.map(book => `
+                    <div onclick="seleccionarLibro('${book.id}', '${book.name}')" class="flex items-center justify-between p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 active:scale-98 transition cursor-pointer shadow-sm">
+                        <div>
+                            <span class="font-semibold text-base">${book.name}</span>
+                            <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-medium">${book.testament || ''}</span>
+                            <p class="text-xs opacity-70 mt-1">${book.description || ''}</p>
+                        </div>
+                        <span class="opacity-40 text-lg">›</span>
+                    </div>
+                `).join('') + '</div>';
+            } catch (err) {
+                console.error(err);
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar los textos apócrifos.</p>';
+            }
+        }
+
         async function obtenerPalabraDelDiaHTML() {
-            const todayStr = new Date().toISOString().split('T')[0]; // Fecha actual (Ej: 2026-10-27)
+            const todayStr = new Date().toISOString().split('T')[0];
             let dailyData = JSON.parse(localStorage.getItem('bible_daily_verse'));
 
-            // Si no existe o cambió de fecha, buscamos uno nuevo de la base de datos
             if (!dailyData || dailyData.date !== todayStr) {
                 try {
-                    // Seleccionar un versículo al azar de la base de datos
                     const { data, error } = await supabaseClient
                         .from('bible_verses')
                         .select('chapter, verse, text, bible_books(name, modern_name)')
@@ -241,7 +276,8 @@
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando capítulos...</div>';
 
             try {
-                const { data, error } = await supabaseClient.from('bible_verses').select('chapter').eq('book_id', bookId);
+                const tableName = isApocryphaMode ? 'apocrypha_verses' : 'bible_verses';
+                const { data, error } = await supabaseClient.from(tableName).select('chapter').eq('book_id', bookId);
                 if (error) throw error;
                 const chapters = [...new Set(data.map(item => item.chapter))].sort((a, b) => a - b);
 
@@ -269,7 +305,8 @@
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando versículos...</div>';
 
             try {
-                const { data, error } = await supabaseClient.from('bible_verses').select('*').eq('book_id', selectedBook.id).eq('chapter', chapterNumber).order('verse', { ascending: true });
+                const tableName = isApocryphaMode ? 'apocrypha_verses' : 'bible_verses';
+                const { data, error } = await supabaseClient.from(tableName).select('*').eq('book_id', selectedBook.id).eq('chapter', chapterNumber).order('verse', { ascending: true });
                 if (error) throw error;
 
                 contentBox.innerHTML = data.map(v => `
@@ -768,7 +805,7 @@
             }
         }
 
-        // --- TRIVIA AVANZADA CON 200 ESTRELLAS FUGACES Y BOTÓN ÚNICO INTERACTIVO ---
+        // --- TRIVIA AVANZADA ---
         let currentTriviaQuestions = [];
         let triviaAnsweredCount = 0;
         let roundCorrects = 0;
@@ -800,7 +837,6 @@
                     </div>
                 </div>
 
-                <!-- BOTÓN ÚNICO INTEGRADO DE NUEVA PARTIDA / PREGUNTA ALEATORIA -->
                 <button onclick="cargarTrivia()" class="w-full mb-4 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-sm active:scale-98 transition flex items-center justify-between shadow-md">
                     <span class="flex items-center gap-2">🎲 Pregunta aleatoria</span>
                     <span class="bg-amber-700/60 px-3 py-1 rounded-lg text-xs flex items-center gap-1">🔄 Nueva Partida</span>
@@ -889,7 +925,6 @@
                         document.getElementById('global-stars-display').innerText = userStats.stars;
 
                         mensajeFinal += ` ¡Ronda perfecta! Has ganado 🍷 **¡Un Cáliz sagrado y un bonus de +${bonusPerfecto} Estrellas ⭐!**`;
-                        
                         lanzarExplosionEstrellasFugaces();
                     }
 
@@ -906,7 +941,6 @@
             }
         }
 
-        // EXPLOSIÓN MASIVA DE 200 ESTRELLAS FUGACES Y MENSAJE CENTRAL
         function lanzarExplosionEstrellasFugaces() {
             const overlay = document.getElementById('explosion-overlay');
             overlay.innerHTML = '';
@@ -921,7 +955,7 @@
             `;
             overlay.appendChild(messageBox);
 
-            const totalStars = 200; // 200 estrellas fugaces gigantes
+            const totalStars = 200;
             for (let i = 0; i < totalStars; i++) {
                 const star = document.createElement('div');
                 star.className = 'burst-particle';
@@ -950,7 +984,11 @@
             if (currentView === 'verses') {
                 seleccionarLibro(selectedBook.id, selectedBook.name);
             } else if (currentView === 'chapters') {
-                cargarLibros();
+                if (isApocryphaMode) {
+                    cargarApocrifos();
+                } else {
+                    cargarLibros();
+                }
             } else if (currentView === 'plan_detail' || currentView === 'create_plan') {
                 cargarPlanes();
             }
