@@ -836,7 +836,7 @@
         let rosarioActual = {
             tipo: '',
             misterioIndex: 0,
-            pasoActual: 'padrenuestro', // 'padrenuestro', 'avemaria', 'gloria'
+            pasoActual: 'padrenuestro',
             cuentaAveMarias: 10
         };
 
@@ -1272,8 +1272,10 @@
                 }
             } else if (currentView === 'plan_detail' || currentView === 'create_plan') {
                 cargarPlanes();
-            } else if (currentView === 'prayer_categories' || currentView === 'rosary' || currentView === 'prayer_detail' || currentView === 'rosary_detail') {
+            } else if (currentView === 'prayer_categories' || currentView === 'rosary' || currentView === 'rosary_detail') {
                 cargarOraciones();
+            } else if (currentView === 'prayer_detail') {
+                cargarMenuCategoriasOraciones();
             }
         }
 
