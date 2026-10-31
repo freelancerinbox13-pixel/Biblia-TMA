@@ -10,6 +10,8 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SDK de Monetización AdsGram -->
+    <script src="https://sad.adsgram.ai/js/sad.js" async></script>
     <style>
         @keyframes burstStar {
             0% { transform: translate(0, 0) scale(0.2) rotate(0deg); opacity: 1; }
@@ -232,7 +234,7 @@
         }
 
         async function cargarMenuCategoriasOraciones() {
-            currentView = 'prayer_categories'; backBtn.classList.remove('hidden'); mainTitle.innerText = "📖 Categorías de Oración"; mainSubtitle.innerText = "Selecciona un propósito";
+            currentView = 'prayer_categories'; backBtn.classList.add('hidden'); mainTitle.innerText = "📖 Categorías de Oración"; mainSubtitle.innerText = "Selecciona un propósito";
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando oraciones...</div>';
             try {
                 const { data: categories } = await supabaseClient.from('prayer_categories').select('*').order('id');
@@ -259,7 +261,6 @@
             currentView = 'prayer_detail'; backBtn.classList.remove('hidden'); mainTitle.innerText = title; mainSubtitle.style.display = 'none';
             const formattedContent = content.replace(/\\n/g, '<br>');
             
-            // Respaldo inteligente: Si por alguna razón la BD no trae la URL, la asigna según el título de la oración
             let resolvedAudioUrl = audioUrl;
             if (!resolvedAudioUrl || resolvedAudioUrl === 'null' || resolvedAudioUrl === '') {
                 const tLower = title.toLowerCase();
@@ -392,9 +393,55 @@
             } catch (err) {}
         }
 
+        // --- SISTEMA DE MONETIZACIÓN CON ADSGRAM ---
+        const adController = window.Adsgram ? window.Adsgram.init({ blockId: "YOUR_BLOCK_ID" }) : null;
+
+        function mostrarAnuncioRecompensado() {
+            if (adController) {
+                adController.show()
+                    .then((result) => {
+                        userStats.stars += 10;
+                        guardarStats();
+                        document.getElementById('global-stars-display').innerText = userStats.stars;
+                        alert("🎉 ¡Gracias por apoyar la app! Has ganado +10 Estrellas ⭐.");
+                    })
+                    .catch((result) => {
+                        alert("ℹ️ Debes ver el anuncio completo para recibir la recompensa.");
+                    });
+            } else {
+                alert("El sistema de anuncios está cargando o no está disponible en este momento.");
+            }
+        }
+
         async function cargarTrivia() {
             currentView = 'trivia'; backBtn.classList.add('hidden'); mainTitle.innerText = "❓ Trivia Bíblica"; mainSubtitle.style.display = 'block';
-            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando trivia...</div>';
+            
+            contentBox.innerHTML = `
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl shadow-sm">
+                        <span class="text-3xl">⭐</span>
+                        <div>
+                            <div class="text-[10px] font-bold opacity-70 uppercase tracking-wider">Estrellas</div>
+                            <div id="global-stars-display" class="text-base font-extrabold text-amber-500">${userStats.stars}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 p-3 rounded-xl shadow-sm">
+                        <span class="text-3xl">🍷</span>
+                        <div>
+                            <div class="text-[10px] font-bold opacity-70 uppercase tracking-wider">Cálices</div>
+                            <div id="global-chalices-display" class="text-base font-extrabold text-purple-500">${userStats.chalices}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTÓN DE MONETIZACIÓN / ANUNCIO RECOMPENSADO -->
+                <button onclick="mostrarAnuncioRecompensado()" class="w-full mb-4 py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl font-bold text-sm active:scale-98 transition flex items-center justify-between shadow-md">
+                    <span class="flex items-center gap-2">🎁 Ver anuncio y ganar estrellas</span>
+                    <span class="bg-amber-700/60 px-3 py-1 rounded-lg text-xs">+10 ⭐</span>
+                </button>
+
+                <div class="text-center py-6 opacity-65">Sección de trivia lista.</div>
+            `;
         }
 
         function volverAtras() {
