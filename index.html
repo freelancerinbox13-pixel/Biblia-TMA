@@ -90,13 +90,6 @@
         const mainTitle = document.getElementById('main-title');
         const mainSubtitle = document.getElementById('main-subtitle');
 
-        function parsearReferenciaBiblica(texto) {
-            if (!texto) return null;
-            const match = texto.match(/^([\w\sáéíóúÁÉÍÓÚñÑ]+?)\s+(\d+)(?::(\d+(?:-\d+)?))?/i);
-            if (!match) return { libro: texto.trim(), capitulo: null, versiculo: null };
-            return { libro: match[1].trim(), capitulo: parseInt(match[2]), versiculo: match[3] || null };
-        }
-
         async function cargarLibros() {
             currentView = 'books'; isApocryphaMode = false; backBtn.classList.add('hidden');
             mainTitle.innerText = "📖 Biblia TMA"; mainSubtitle.innerText = "Tu espacio de lectura en Telegram"; mainSubtitle.style.display = 'block';
@@ -243,7 +236,6 @@
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando oraciones...</div>';
             try {
                 const { data: categories } = await supabaseClient.from('prayer_categories').select('*').order('id');
-                // Se incluye explícitamente audio_url en la consulta para que las oraciones tengan el enlace multimedia
                 const { data: prayers } = await supabaseClient.from('prayers').select('id, title, content, category_id, audio_url');
                 contentBox.innerHTML = categories.map(cat => {
                     const prayersInCat = prayers.filter(p => p.category_id === cat.id);
@@ -266,7 +258,25 @@
         function verDetalleOracion(title, content, audioUrl) {
             currentView = 'prayer_detail'; backBtn.classList.remove('hidden'); mainTitle.innerText = title; mainSubtitle.style.display = 'none';
             const formattedContent = content.replace(/\\n/g, '<br>');
-            const audioHTML = audioUrl ? `<div class="mt-4 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30 text-center"><audio controls class="w-full"><source src="${audioUrl}" type="audio/mpeg">Tu navegador no soporta audio.</audio></div>` : '';
+            
+            // Respaldo inteligente: Si por alguna razón la BD no trae la URL, la asigna según el título de la oración
+            let resolvedAudioUrl = audioUrl;
+            if (!resolvedAudioUrl || resolvedAudioUrl === 'null' || resolvedAudioUrl === '') {
+                const tLower = title.toLowerCase();
+                if (tLower.includes('padre nuestro')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/padre_nuestro.mp3";
+                else if (tLower.includes('ave') || tLower.includes('maría')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/ave_maria.mp3";
+                else if (tLower.includes('gloria')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/gloria_mayor.mp3";
+                else if (tLower.includes('salve')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/salve.mp3";
+                else if (tLower.includes('miguel')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/oracion_san_miguel.mp3";
+                else if (tLower.includes('magníficat') || tLower.includes('magnificat')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/magnificat.mp3";
+                else if (tLower.includes('confieso')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/yo_confieso.mp3";
+                else if (tLower.includes('tantum')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/tantum_ergo.mp3";
+                else if (tLower.includes('bendición')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/bendicion_antes_de_comer.mp3";
+                else if (tLower.includes('gracias')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/accion_de_gracias_despues_de_comer.mp3";
+                else if (tLower.includes('cántico')) resolvedAudioUrl = "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/canticos_de_las_criaturas.mp3";
+            }
+
+            const audioHTML = resolvedAudioUrl ? `<div class="mt-4 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30 text-center"><audio controls class="w-full"><source src="${resolvedAudioUrl}" type="audio/mpeg">Tu navegador no soporta audio.</audio></div>` : '';
             contentBox.innerHTML = `<div class="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 shadow-sm space-y-4"><div class="text-sm leading-relaxed whitespace-pre-line opacity-95">${formattedContent}</div>${audioHTML}</div>`;
         }
 
