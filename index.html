@@ -265,7 +265,7 @@
         function verDetalleOracion(title, content, audioUrl) {
             currentView = 'prayer_detail'; backBtn.classList.remove('hidden'); mainTitle.innerText = title; mainSubtitle.style.display = 'none';
             const formattedContent = content.replace(/\\n/g, '<br>');
-            const audioHTML = audioUrl ? `<div class="mt-4 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30 text-center"><audio controls class="w-full"><source src="${audioUrl}" type="audio/mpeg">Tu navegador no soporta audio.</audio></div>` : '';
+            const audioHTML = audioUrl ? `<div class="mt-4 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30 text-center"><audio controls autoplay class="w-full"><source src="${audioUrl}" type="audio/mpeg">Tu navegador no soporta audio.</audio></div>` : '';
             contentBox.innerHTML = `<div class="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 shadow-sm space-y-4"><div class="text-sm leading-relaxed whitespace-pre-line opacity-95">${formattedContent}</div>${audioHTML}</div>`;
         }
 
