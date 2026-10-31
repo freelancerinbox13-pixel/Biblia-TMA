@@ -12,14 +12,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @keyframes burstStar {
-            0% {
-                transform: translate(0, 0) scale(0.2) rotate(0deg);
-                opacity: 1;
-            }
-            100% {
-                transform: translate(var(--dx), var(--dy)) scale(var(--scale)) rotate(720deg);
-                opacity: 0;
-            }
+            0% { transform: translate(0, 0) scale(0.2) rotate(0deg); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) scale(var(--scale)) rotate(720deg); opacity: 0; }
         }
         @keyframes fadeInOut {
             0% { transform: scale(0.6); opacity: 0; }
@@ -27,37 +21,17 @@
             85% { transform: scale(1); opacity: 1; }
             100% { transform: scale(1.15); opacity: 0; }
         }
-        .burst-particle {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            animation: burstStar 1.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
-            pointer-events: none;
-        }
-        .blessing-overlay {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.75);
-            z-index: 100;
-            pointer-events: none;
-            animation: fadeInOut 3s ease-in-out forwards;
-        }
+        .burst-particle { position: absolute; top: 50%; left: 50%; animation: burstStar 1.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; pointer-events: none; }
+        .blessing-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.75); z-index: 100; pointer-events: none; animation: fadeInOut 3s ease-in-out forwards; }
     </style>
 </head>
 <body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 font-sans pb-20 relative overflow-x-hidden">
 
-    <!-- CONTENEDOR PARA LA GRAN EXPLOSIÓN DE ESTRELLAS FUGACES -->
     <div id="explosion-overlay" class="hidden"></div>
 
     <div class="max-w-md mx-auto">
-        <!-- CABECERA ÚNICA -->
         <header class="mb-4 flex items-center justify-between">
-            <button id="back-btn" onclick="volverAtras()" class="hidden px-3 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-sm font-medium active:scale-95 transition">
-                ← Volver
-            </button>
+            <button id="back-btn" onclick="volverAtras()" class="hidden px-3 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-sm font-medium active:scale-95 transition">← Volver</button>
             <div class="text-center flex-1">
                 <h1 id="main-title" class="text-2xl font-bold">📖 Biblia TMA</h1>
                 <p id="main-subtitle" class="text-sm opacity-70">Tu espacio de lectura en Telegram</p>
@@ -65,7 +39,6 @@
             <div class="w-12"></div>
         </header>
 
-        <!-- BARRA DE NAVEGACIÓN RÁPIDA -->
         <nav class="grid grid-cols-7 gap-1 mb-5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-center text-xs font-medium">
             <button onclick="cargarLibros()" class="py-2 rounded-lg bg-zinc-200 dark:bg-zinc-700 transition">📖 Biblia</button>
             <button onclick="cargarApocrifos()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">📜 Apócrifos</button>
@@ -76,7 +49,6 @@
             <button onclick="cargarTrivia()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">❓ Trivia</button>
         </nav>
 
-        <!-- CONTENEDOR DE DATOS -->
         <div id="content-box" class="space-y-3">
             <div class="text-center py-10 opacity-65">Cargando...</div>
         </div>
@@ -104,20 +76,12 @@
 
         let userStats = JSON.parse(localStorage.getItem(`trivia_stats_${currentTelegramId}`)) || { stars: 145, chalices: 6 };
 
-        function guardarStats() {
-            localStorage.setItem(`trivia_stats_${currentTelegramId}`, JSON.stringify(userStats));
-        }
+        function guardarStats() { localStorage.setItem(`trivia_stats_${currentTelegramId}`, JSON.stringify(userStats)); }
 
         async function registrarUsuario() {
             try {
-                await supabaseClient.from('users').upsert([{
-                    telegram_id: currentTelegramId,
-                    username: currentUserName,
-                    updated_at: new Date()
-                }], { onConflict: 'telegram_id' });
-            } catch (err) {
-                console.error("Error al registrar usuario:", err);
-            }
+                await supabaseClient.from('users').upsert([{ telegram_id: currentTelegramId, username: currentUserName, updated_at: new Date() }], { onConflict: 'telegram_id' });
+            } catch (err) { console.error("Error al registrar usuario:", err); }
         }
         registrarUsuario();
 
@@ -129,832 +93,207 @@
         function parsearReferenciaBiblica(texto) {
             if (!texto) return null;
             const match = texto.match(/^([\w\sáéíóúÁÉÍÓÚñÑ]+?)\s+(\d+)(?::(\d+(?:-\d+)?))?/i);
-            if (!match) {
-                return { libro: texto.trim(), capitulo: null, versiculo: null };
-            }
-            return {
-                libro: match[1].trim(),
-                capitulo: parseInt(match[2]),
-                versiculo: match[3] || null
-            };
+            if (!match) return { libro: texto.trim(), capitulo: null, versiculo: null };
+            return { libro: match[1].trim(), capitulo: parseInt(match[2]), versiculo: match[3] || null };
         }
 
-        // --- 1. BIBLIOTECA - LIBROS + PALABRA DEL DÍA ---
         async function cargarLibros() {
-            currentView = 'books';
-            isApocryphaMode = false;
-            backBtn.classList.add('hidden');
-            mainTitle.innerText = "📖 Biblia TMA";
-            mainSubtitle.innerText = "Tu espacio de lectura en Telegram";
-            mainSubtitle.style.display = 'block';
-            
+            currentView = 'books'; isApocryphaMode = false; backBtn.classList.add('hidden');
+            mainTitle.innerText = "📖 Biblia TMA"; mainSubtitle.innerText = "Tu espacio de lectura en Telegram"; mainSubtitle.style.display = 'block';
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando contenido...</div>';
-
             try {
                 const dailyVerseHTML = await obtenerPalabraDelDiaHTML();
-
                 const { data, error } = await supabaseClient.from('bible_books').select('*').order('id', { ascending: true });
                 if (error) throw error;
-                if (!data || data.length === 0) {
-                    contentBox.innerHTML = dailyVerseHTML + '<p class="text-center opacity-60">No hay libros cargados.</p>';
-                    return;
-                }
-
                 const librosHTML = data.map(book => `
                     <div onclick="seleccionarLibro('${book.id}', '${book.name}')" class="flex items-center justify-between p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 active:scale-98 transition cursor-pointer shadow-sm">
-                        <div>
-                            <span class="font-semibold text-base">${book.name}</span>
-                            <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-700 opacity-80">${book.testament || ''}</span>
-                        </div>
+                        <div><span class="font-semibold text-base">${book.name}</span><span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-700 opacity-80">${book.testament || ''}</span></div>
                         <span class="opacity-40 text-lg">›</span>
                     </div>
                 `).join('');
-
                 contentBox.innerHTML = dailyVerseHTML + '<div class="space-y-2 mt-4">' + librosHTML + '</div>';
-            } catch (err) {
-                console.error(err);
-                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar la biblioteca.</p>';
-            }
+            } catch (err) { contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar la biblioteca.</p>'; }
         }
 
-        // --- APÓCRIFOS Y TEXTOS HISTÓRICOS ---
         async function cargarApocrifos() {
-            currentView = 'apocrypha_list';
-            isApocryphaMode = true;
-            backBtn.classList.add('hidden');
-            mainTitle.innerText = "📜 Textos Apócrifos e Históricos";
-            mainSubtitle.innerText = "Evangelios y escritos antiguos";
-            mainSubtitle.style.display = 'block';
-            
+            currentView = 'apocrypha_list'; isApocryphaMode = true; backBtn.classList.add('hidden');
+            mainTitle.innerText = "📜 Textos Apócrifos e Históricos"; mainSubtitle.innerText = "Evangelios y escritos antiguos"; mainSubtitle.style.display = 'block';
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando textos especiales...</div>';
-
             try {
                 const { data, error } = await supabaseClient.from('apocrypha_books').select('*').order('id', { ascending: true });
                 if (error) throw error;
-                if (!data || data.length === 0) {
-                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">No hay textos apócrifos cargados todavía.</p>';
-                    return;
-                }
-
                 contentBox.innerHTML = '<div class="space-y-2">' + data.map(book => `
                     <div onclick="seleccionarLibro('${book.id}', '${book.name}')" class="flex items-center justify-between p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 active:scale-98 transition cursor-pointer shadow-sm">
-                        <div>
-                            <span class="font-semibold text-base">${book.name}</span>
-                            <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-medium">${book.testament || ''}</span>
-                            <p class="text-xs opacity-70 mt-1">${book.description || ''}</p>
-                        </div>
+                        <div><span class="font-semibold text-base">${book.name}</span><span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-medium">${book.testament || ''}</span><p class="text-xs opacity-70 mt-1">${book.description || ''}</p></div>
                         <span class="opacity-40 text-lg">›</span>
                     </div>
                 `).join('') + '</div>';
-            } catch (err) {
-                console.error(err);
-                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar los textos apócrifos.</p>';
-            }
+            } catch (err) { contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar los textos apócrifos.</p>'; }
         }
 
         async function obtenerPalabraDelDiaHTML() {
             const todayStr = new Date().toISOString().split('T')[0];
             let dailyData = JSON.parse(localStorage.getItem('bible_daily_verse'));
-
             if (!dailyData || dailyData.date !== todayStr) {
                 try {
-                    const { data, error } = await supabaseClient
-                        .from('bible_verses')
-                        .select('chapter, verse, text, bible_books(name, modern_name)')
-                        .limit(100);
-
-                    if (!error && data && data.length > 0) {
-                        const randomIndex = Math.floor(Math.random() * data.length);
-                        const v = data[randomIndex];
-                        dailyData = {
-                            date: todayStr,
-                            book: v.bible_books?.modern_name || v.bible_books?.name || 'Escritura',
-                            chapter: v.chapter,
-                            verse: v.verse,
-                            text: v.text
-                        };
+                    const { data } = await supabaseClient.from('bible_verses').select('chapter, verse, text, bible_books(name, modern_name)').limit(100);
+                    if (data && data.length > 0) {
+                        const v = data[Math.floor(Math.random() * data.length)];
+                        dailyData = { date: todayStr, book: v.bible_books?.modern_name || v.bible_books?.name || 'Escritura', chapter: v.chapter, verse: v.verse, text: v.text };
                         localStorage.setItem('bible_daily_verse', JSON.stringify(dailyData));
                     }
-                } catch (e) {
-                    console.error("Error al obtener palabra del día", e);
-                }
+                } catch (e) {}
             }
-
             if (!dailyData) return '';
-
             return `
                 <div class="p-4 rounded-2xl bg-gradient-to-br from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/40 shadow-md space-y-2 relative overflow-hidden">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                            🌅 Palabra del Día
-                        </span>
-                        <span class="text-[10px] opacity-60 font-medium">Actualizado hoy</span>
-                    </div>
-                    <p class="text-sm italic opacity-90 font-serif leading-relaxed">
-                        "${dailyData.text}"
-                    </p>
-                    <div class="flex justify-between items-center pt-1">
-                        <span class="text-xs font-extrabold text-amber-600 dark:text-amber-400">
-                            📖 ${dailyData.book} ${dailyData.chapter}:${dailyData.verse}
-                        </span>
-                        <button onclick="guardarMarcador('${dailyData.book}', ${dailyData.chapter}, ${dailyData.verse}, '${dailyData.text.replace(/'/g, "\\'")}')" class="text-xs px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 dark:text-amber-400 rounded-lg font-semibold transition active:scale-95">
-                            ⭐ Guardar
-                        </button>
-                    </div>
+                    <div class="flex items-center justify-between"><span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">🌅 Palabra del Día</span></div>
+                    <p class="text-sm italic opacity-90 font-serif leading-relaxed">"${dailyData.text}"</p>
+                    <div class="flex justify-between items-center pt-1"><span class="text-xs font-extrabold text-amber-600 dark:text-amber-400">📖 ${dailyData.book} ${dailyData.chapter}:${dailyData.verse}</span></div>
                 </div>
             `;
         }
 
-        // 2. CAPÍTULOS
         async function seleccionarLibro(bookId, bookName) {
-            selectedBook = { id: bookId, name: bookName };
-            currentView = 'chapters';
-            backBtn.classList.remove('hidden');
-            mainTitle.innerText = bookName;
-            mainSubtitle.innerText = "Selecciona un capítulo";
-
+            selectedBook = { id: bookId, name: bookName }; currentView = 'chapters'; backBtn.classList.remove('hidden');
+            mainTitle.innerText = bookName; mainSubtitle.innerText = "Selecciona un capítulo";
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando capítulos...</div>';
-
             try {
                 const tableName = isApocryphaMode ? 'apocrypha_verses' : 'bible_verses';
-                const { data, error } = await supabaseClient.from(tableName).select('chapter').eq('book_id', bookId);
-                if (error) throw error;
+                const { data } = await supabaseClient.from(tableName).select('chapter').eq('book_id', bookId);
                 const chapters = [...new Set(data.map(item => item.chapter))].sort((a, b) => a - b);
-
-                contentBox.innerHTML = `
-                    <div class="grid grid-cols-4 gap-2">
-                        ${chapters.map(chNum => `
-                            <div onclick="seleccionarCapitulo(${chNum})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center font-semibold active:scale-95 transition cursor-pointer shadow-sm">
-                                ${chNum}
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } catch (err) {
-                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar capítulos.</p>';
-            }
+                contentBox.innerHTML = `<div class="grid grid-cols-4 gap-2">${chapters.map(chNum => `<div onclick="seleccionarCapitulo(${chNum})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center font-semibold active:scale-95 transition cursor-pointer shadow-sm">${chNum}</div>`).join('')}</div>`;
+            } catch (err) { contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar capítulos.</p>'; }
         }
 
-        // 3. VERSÍCULOS + MARCADOR ⭐
         async function seleccionarCapitulo(chapterNumber) {
-            currentView = 'verses';
-            backBtn.classList.remove('hidden');
-            mainTitle.innerText = `${selectedBook.name} - Cap. ${chapterNumber}`;
-            mainSubtitle.style.display = 'none';
-
+            currentView = 'verses'; backBtn.classList.remove('hidden'); mainTitle.innerText = `${selectedBook.name} - Cap. ${chapterNumber}`; mainSubtitle.style.display = 'none';
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando versículos...</div>';
-
             try {
                 const tableName = isApocryphaMode ? 'apocrypha_verses' : 'bible_verses';
-                const { data, error } = await supabaseClient.from(tableName).select('*').eq('book_id', selectedBook.id).eq('chapter', chapterNumber).order('verse', { ascending: true });
-                if (error) throw error;
-
-                contentBox.innerHTML = data.map(v => `
-                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 leading-relaxed text-sm flex justify-between items-start gap-2">
-                        <div><span class="font-bold text-xs opacity-60 mr-1">${v.verse}</span> ${v.text}</div>
-                        <button onclick="guardarMarcador('${selectedBook.name}', ${chapterNumber}, ${v.verse}, '${v.text.replace(/'/g, "\\'")}')" class="text-xs opacity-50 hover:opacity-100 transition px-2 py-1 bg-zinc-200 dark:bg-zinc-700 rounded" title="Guardar marcador">⭐</button>
-                    </div>
-                `).join('');
-            } catch (err) {
-                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar versículos.</p>';
-            }
-        }
-
-        function guardarMarcador(bookName, chapter, verse, text) {
-            try {
-                let favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
-                const existe = favoritos.some(f => f.book === bookName && f.chapter === chapter && f.verse === verse);
-                if (!existe) {
-                    favoritos.push({ book: bookName, chapter, verse, text });
-                    localStorage.setItem('bible_favorites', JSON.stringify(favoritos));
-                    alert("⭐ ¡Versículo guardado en tus favoritos!");
-                } else {
-                    alert("ℹ️ Este versículo ya estaba en tus favoritos.");
-                }
-            } catch (err) {
-                console.error(err);
-                alert("No se pudo guardar el marcador.");
-            }
+                const { data } = await supabaseClient.from(tableName).select('*').eq('book_id', selectedBook.id).eq('chapter', chapterNumber).order('verse', { ascending: true });
+                contentBox.innerHTML = data.map(v => `<div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 leading-relaxed text-sm flex justify-between items-start gap-2"><div><span class="font-bold text-xs opacity-60 mr-1">${v.verse}</span> ${v.text}</div></div>`).join('');
+            } catch (err) { contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar versículos.</p>'; }
         }
 
         function cargarFavoritos() {
-            currentView = 'favorites';
-            backBtn.classList.add('hidden');
-            mainTitle.innerText = "⭐ Mis Favoritos";
-            mainSubtitle.innerText = "Tus versículos guardados";
-            mainSubtitle.style.display = 'block';
-
+            currentView = 'favorites'; backBtn.classList.add('hidden'); mainTitle.innerText = "⭐ Mis Favoritos"; mainSubtitle.innerText = "Tus versículos guardados"; mainSubtitle.style.display = 'block';
             try {
                 const favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
-                if (favoritos.length === 0) {
-                    contentBox.innerHTML = '<p class="text-center opacity-60 py-10">Aún no tienes versículos guardados como favoritos.</p>';
-                    return;
-                }
-
-                contentBox.innerHTML = favoritos.map((fav, index) => `
-                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm space-y-1 shadow-sm border-l-4 border-amber-500 relative">
-                        <div class="font-bold text-amber-600 dark:text-amber-400 flex justify-between">
-                            <span>${fav.book} ${fav.chapter}:${fav.verse}</span>
-                            <button onclick="eliminarFavorito(${index})" class="text-xs text-red-500 hover:underline">Eliminar</button>
-                        </div>
-                        <div class="opacity-90">"${fav.text}"</div>
-                    </div>
-                `).join('');
-            } catch (err) {
-                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar los marcadores.</p>';
-            }
-        }
-
-        function eliminarFavorito(index) {
-            let favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
-            favoritos.splice(index, 1);
-            localStorage.setItem('bible_favorites', JSON.stringify(favoritos));
-            cargarFavoritos();
+                if (favoritos.length === 0) { contentBox.innerHTML = '<p class="text-center opacity-60 py-10">Aún no tienes versículos guardados.</p>'; return; }
+                contentBox.innerHTML = favoritos.map((fav, index) => `<div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm space-y-1 shadow-sm border-l-4 border-amber-500"><div class="font-bold text-amber-600 dark:text-amber-400"><span>${fav.book} ${fav.chapter}:${fav.verse}</span></div><div class="opacity-90">"${fav.text}"</div></div>`).join('');
+            } catch (err) {}
         }
 
         function abrirBuscador() {
-            currentView = 'search';
-            backBtn.classList.add('hidden');
-            mainTitle.innerText = "🔍 Buscador Bíblico";
-            mainSubtitle.innerText = "Busca por libro, cita o palabras";
-            mainSubtitle.style.display = 'block';
-
-            contentBox.innerHTML = `
-                <div class="space-y-3">
-                    <div class="flex gap-2">
-                        <input type="text" id="searchInput" placeholder="Ej: Salmo 23, Proverbios 3:5..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
-                        <button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
-                    </div>
-                    <div id="search-results" class="space-y-2 mt-4">
-                        <p class="text-center opacity-50 text-sm py-5">Escribe una cita o palabra clave</p>
-                    </div>
-                </div>
-            `;
+            currentView = 'search'; backBtn.classList.add('hidden'); mainTitle.innerText = "🔍 Buscador Bíblico"; mainSubtitle.innerText = "Busca por libro, cita o palabras"; mainSubtitle.style.display = 'block';
+            contentBox.innerHTML = `<div class="space-y-3"><div class="flex gap-2"><input type="text" id="searchInput" placeholder="Ej: Salmo 23..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm"><button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button></div><div id="search-results" class="space-y-2 mt-4"><p class="text-center opacity-50 text-sm py-5">Escribe una cita o palabra clave</p></div></div>`;
         }
 
         async function ejecutarBusqueda() {
             const rawQuery = document.getElementById('searchInput').value.trim();
             const resultsContainer = document.getElementById('search-results');
             if (!rawQuery) return;
-
             resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
-            
             try {
-                const parsed = parsearReferenciaBiblica(rawQuery);
-
-                if (parsed && parsed.capitulo) {
-                    const { data: matchedBooks } = await supabaseClient
-                        .from('bible_books')
-                        .select('id, name')
-                        .ilike('name', `%${parsed.libro}%`);
-
-                    if (matchedBooks && matchedBooks.length > 0) {
-                        const bookIds = matchedBooks.map(b => b.id);
-                        let query = supabaseClient
-                            .from('bible_verses')
-                            .select('chapter, verse, text, bible_books(name, modern_name)')
-                            .in('book_id', bookIds)
-                            .eq('chapter', parsed.capitulo);
-
-                        if (parsed.versiculo) {
-                            if (parsed.versiculo.includes('-')) {
-                                const [startV, endV] = parsed.versiculo.split('-').map(Number);
-                                query = query.gte('verse', startV).lte('verse', endV);
-                            } else {
-                                query = query.eq('verse', parseInt(parsed.versiculo));
-                            }
-                        }
-
-                        const { data: verseData } = await query.limit(30);
-                        if (verseData && verseData.length > 0) {
-                            mostrarResultadosBusqueda(verseData, resultsContainer, rawQuery);
-                            return;
-                        }
-                    }
-                }
-
-                const { data: matchedBooks } = await supabaseClient
-                    .from('bible_books')
-                    .select('id, name, modern_name')
-                    .ilike('name', `%${rawQuery}%`);
-
-                if (matchedBooks && matchedBooks.length > 0) {
-                    const bookIds = matchedBooks.map(b => b.id);
-                    const { data: verseData } = await supabaseClient
-                        .from('bible_verses')
-                        .select('chapter, verse, text, bible_books(name, modern_name)')
-                        .in('book_id', bookIds)
-                        .limit(30);
-
-                    mostrarResultadosBusqueda(verseData, resultsContainer, rawQuery);
-                    return;
-                }
-
-                const { data: textData } = await supabaseClient
-                    .from('bible_verses')
-                    .select('chapter, verse, text, bible_books(name, modern_name)')
-                    .ilike('text', `%${rawQuery}%`)
-                    .limit(30);
-
-                mostrarResultadosBusqueda(textData, resultsContainer, rawQuery);
-
-            } catch (err) {
-                console.error(err);
-                resultsContainer.innerHTML = '<p class="text-center text-red-500">Error en la búsqueda.</p>';
-            }
-        }
-
-        function mostrarResultadosBusqueda(data, container, query) {
-            if (!data || data.length === 0) {
-                container.innerHTML = `<p class="text-center opacity-60 py-5">No se encontraron resultados para "${query}".</p>`;
-                return;
-            }
-
-            container.innerHTML = data.map(item => `
-                <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm shadow-sm">
-                    <div class="font-bold text-amber-600 dark:text-amber-400 mb-1">
-                        ${item.bible_books?.modern_name || item.bible_books?.name || 'Libro'} ${item.chapter}:${item.verse}
-                    </div>
-                    <div class="opacity-90">"${item.text}"</div>
-                </div>
-            `).join('');
+                const { data } = await supabaseClient.from('bible_verses').select('chapter, verse, text, bible_books(name, modern_name)').ilike('text', `%${rawQuery}%`).limit(30);
+                if (!data || data.length === 0) { resultsContainer.innerHTML = `<p class="text-center opacity-60 py-5">No se encontraron resultados.</p>`; return; }
+                resultsContainer.innerHTML = data.map(item => `<div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm shadow-sm"><div class="font-bold text-amber-600 dark:text-amber-400 mb-1">${item.bible_books?.modern_name || item.bible_books?.name} ${item.chapter}:${item.verse}</div><div class="opacity-90">"${item.text}"</div></div>`).join('');
+            } catch (err) {}
         }
 
         async function cargarPlanes() {
-            currentView = 'plans';
-            backBtn.classList.add('hidden');
-            mainTitle.innerText = "📅 Planes de Lectura";
-            mainSubtitle.innerText = "Selecciona o busca un devocional";
-            mainSubtitle.style.display = 'block';
-
-            contentBox.innerHTML = `
-                <div class="space-y-2 mb-3">
-                    <button onclick="mostrarFormularioCrearPlan()" class="w-full py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition shadow-sm">+ Crear Nuevo Plan</button>
-                    <div class="flex gap-2">
-                        <input type="text" id="planSearchInput" placeholder="🔍 Buscar planes de lectura..." class="flex-1 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none outline-none text-sm">
-                        <button onclick="ejecutarBusquedaPlanes()" class="px-4 py-2 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button>
-                    </div>
-                </div>
-                <div id="plans-list" class="space-y-3">
-                    <div class="text-center py-6 opacity-65">Cargando planes...</div>
-                </div>
-            `;
-
+            currentView = 'plans'; backBtn.classList.add('hidden'); mainTitle.innerText = "📅 Planes de Lectura"; mainSubtitle.innerText = "Devocionales"; mainSubtitle.style.display = 'block';
+            contentBox.innerHTML = '<div id="plans-list" class="space-y-3"><div class="text-center py-6 opacity-65">Cargando planes...</div></div>';
             try {
-                const { data, error } = await supabaseClient.from('reading_plans').select('*');
-                if (error) throw error;
-                
+                const { data } = await supabaseClient.from('reading_plans').select('*');
                 allPlansCache = data || [];
-                renderizarPlanes(allPlansCache);
-            } catch (err) {
-                document.getElementById('plans-list').innerHTML = '<p class="text-center text-red-500">Error al cargar planes.</p>';
-            }
+                document.getElementById('plans-list').innerHTML = allPlansCache.map(plan => `<div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm"><h3 class="font-bold text-base">${plan.title}</h3><p class="text-xs opacity-70">${plan.description || ''}</p></div>`).join('');
+            } catch (err) {}
         }
 
-        function renderizarPlanes(planes) {
-            const listContainer = document.getElementById('plans-list');
-            if (!planes || planes.length === 0) {
-                listContainer.innerHTML = `
-                    <div class="text-center py-8 space-y-3">
-                        <p class="opacity-60 text-sm">No se encontraron planes de lectura.</p>
-                        <button onclick="cargarPlanes()" class="px-4 py-2 bg-zinc-200 dark:bg-zinc-700 rounded-xl text-xs font-semibold active:scale-95 transition">🔄 Ver todos los planes</button>
-                    </div>
-                `;
-                return;
-            }
-
-            listContainer.innerHTML = planes.map(plan => `
-                <div onclick="verDetallePlan('${plan.id}', '${plan.title.replace(/'/g, "\\'")}')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition">
-                    <h3 class="font-bold text-base">${plan.title}</h3>
-                    <p class="text-xs opacity-70">${plan.description || ''}</p>
-                    ${plan.start_date && plan.end_date ? `<div class="text-xs text-amber-500 font-medium mt-1">🗓️ ${plan.start_date} al ${plan.end_date} ${plan.start_time ? '⏰ ' + plan.start_time : ''}</div>` : (plan.start_time ? `<div class="text-xs text-amber-500 font-medium mt-1">⏰ Hora: ${plan.start_time}</div>` : '')}
-                    <span class="text-xs text-amber-500 font-semibold inline-block mt-2">Ver días del plan →</span>
-                </div>
-            `).join('');
-        }
-
-        async function ejecutarBusquedaPlanes() {
-            const query = document.getElementById('planSearchInput').value.toLowerCase().trim();
-            const listContainer = document.getElementById('plans-list');
-
-            if (!query) {
-                renderizarPlanes(allPlansCache);
-                return;
-            }
-
-            listContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando planes...</div>';
-
-            try {
-                let matchedPlans = allPlansCache.filter(p => 
-                    (p.title && p.title.toLowerCase().includes(query)) || 
-                    (p.description && p.description.toLowerCase().includes(query))
-                );
-
-                renderizarPlanes(matchedPlans);
-            } catch (err) {
-                console.error(err);
-                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al buscar en los planes.</p>';
-            }
-        }
-
-        function mostrarFormularioCrearPlan() {
-            currentView = 'create_plan';
-            mainTitle.innerText = "✨ Crear Plan";
-            mainSubtitle.innerText = "Añade un nuevo devocional";
-
-            contentBox.innerHTML = `
-                <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3">
-                    <div>
-                        <label class="text-xs font-semibold opacity-70">Título del Plan</label>
-                        <input type="text" id="newPlanTitle" placeholder="Ej: Venciendo el miedo" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold opacity-70">Descripción</label>
-                        <textarea id="newPlanDesc" placeholder="Breve descripción..." class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-16"></textarea>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="text-xs font-semibold opacity-70">Fecha de Inicio</label>
-                            <input type="date" id="newPlanStart" class="w-full p-2 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs">
-                        </div>
-                        <div>
-                            <label class="text-xs font-semibold opacity-70">Fecha de Fin</label>
-                            <input type="date" id="newPlanEnd" class="w-full p-2 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold opacity-70">Hora de Comienzo diaria</label>
-                        <input type="time" id="newPlanTime" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold opacity-70">Días del plan (Ej: Día 1: Paz | Salmo 23:1-4)</label>
-                        <textarea id="newPlanDays" placeholder="Día 1 - Título | Salmo 23:1-4&#10;Día 2 - Título | Proverbios 3:5-6" class="w-full p-2.5 mt-1 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
-                    </div>
-                    <button onclick="guardarNuevoPlan()" class="w-full py-2.5 bg-green-600 text-white rounded-lg font-semibold text-sm active:scale-95 transition">Guardar Plan en Base de Datos</button>
-                </div>
-            `;
-        }
-
-        async function guardarNuevoPlan() {
-            const title = document.getElementById('newPlanTitle').value.trim();
-            const description = document.getElementById('newPlanDesc').value.trim();
-            const start_date = document.getElementById('newPlanStart').value;
-            const end_date = document.getElementById('newPlanEnd').value;
-            const start_time = document.getElementById('newPlanTime').value;
-            const daysText = document.getElementById('newPlanDays').value.trim();
-
-            if (!title || !daysText) {
-                alert("Por favor completa al menos el título y los días del plan.");
-                return;
-            }
-
-            try {
-                const { data: planData, error: planError } = await supabaseClient
-                    .from('reading_plans')
-                    .insert([{ title, description, start_date, end_date, start_time }])
-                    .select();
-
-                if (planError) throw planError;
-                const planId = planData[0].id;
-
-                const lines = daysText.split('\n');
-                let dayCounter = 1;
-                for (let line of lines) {
-                    if (line.trim() !== '') {
-                        let parts = line.split('|');
-                        let dayTitle = parts[0].replace(`Día ${dayCounter}`, '').replace('-', '').trim();
-                        let passage = parts[1] ? parts[1].trim() : 'Lectura bíblica';
-
-                        await supabaseClient.from('reading_plan_days').insert([{
-                            plan_id: planId,
-                            day_number: dayCounter,
-                            title: dayTitle || `Día ${dayCounter}`,
-                            passage: passage
-                        }]);
-                        dayCounter++;
-                    }
-                }
-
-                alert("🎉 ¡Plan de lectura creado con éxito!");
-                cargarPlanes();
-            } catch (err) {
-                console.error(err);
-                alert("Error al crear el plan.");
-            }
-        }
-
-        async function verDetallePlan(planId, planTitle) {
-            currentView = 'plan_detail';
-            backBtn.classList.remove('hidden');
-            selectedPlan = { id: planId, title: planTitle };
-            mainTitle.innerText = planTitle;
-            mainSubtitle.innerText = "Días del devocional";
-
-            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando días del plan...</div>';
-
-            try {
-                const { data: daysData, error: daysError } = await supabaseClient
-                    .from('reading_plan_days')
-                    .select('*')
-                    .eq('plan_id', planId)
-                    .order('day_number', { ascending: true });
-
-                if (daysError) throw daysError;
-
-                const { data: progressData } = await supabaseClient
-                    .from('user_plan_progress')
-                    .select('current_day, completed')
-                    .eq('telegram_id', currentTelegramId)
-                    .eq('plan_id', planId);
-
-                const completedDays = new Set((progressData || []).filter(p => p.completed).map(p => p.current_day));
-
-                if (!daysData || daysData.length === 0) {
-                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">Este plan aún no tiene días cargados.</p>';
-                    return;
-                }
-
-                contentBox.innerHTML = daysData.map(d => {
-                    const isCompleted = completedDays.has(d.day_number);
-                    return `
-                        <div id="plan_day_${d.day_number}" class="p-3 rounded-lg ${isCompleted ? 'bg-green-500/10 border border-green-500/40' : 'bg-zinc-50 dark:bg-zinc-800/50'} flex justify-between items-center text-sm mb-2 transition">
-                            <div>
-                                <span class="font-bold text-amber-500 mr-2">Día ${d.day_number}</span>
-                                <span class="font-semibold">${d.title}</span>
-                                <div class="text-xs opacity-70 mt-0.5">Lectura: ${d.passage}</div>
-                            </div>
-                            <div>
-                                ${isCompleted 
-                                    ? `<button onclick="anularDiaPlan('${planId}', ${d.day_number})" class="px-3 py-1.5 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">Anular</button>`
-                                    : `<button onclick="ingresarDiaPlan('${planId}', ${d.day_number})" class="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold active:scale-95 transition">Ingresar</button>`
-                                }
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } catch (err) {
-                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar detalle del plan.</p>';
-            }
-        }
-
-        async function ingresarDiaPlan(planId, dayNumber) {
-            try {
-                await supabaseClient
-                    .from('user_plan_progress')
-                    .delete()
-                    .eq('telegram_id', currentTelegramId)
-                    .eq('plan_id', planId)
-                    .eq('current_day', dayNumber);
-
-                const { error } = await supabaseClient
-                    .from('user_plan_progress')
-                    .insert([{ 
-                        telegram_id: currentTelegramId, 
-                        plan_id: planId, 
-                        current_day: dayNumber, 
-                        completed: true 
-                    }]);
-
-                if (error) throw error;
-                verDetallePlan(planId, selectedPlan.title);
-            } catch (err) {
-                console.error(err);
-                alert("No se pudo ingresar al plan.");
-            }
-        }
-
-        async function anularDiaPlan(planId, dayNumber) {
-            try {
-                const { error } = await supabaseClient
-                    .from('user_plan_progress')
-                    .delete()
-                    .eq('telegram_id', currentTelegramId)
-                    .eq('plan_id', planId)
-                    .eq('current_day', dayNumber);
-
-                if (error) throw error;
-                verDetallePlan(planId, selectedPlan.title);
-            } catch (err) {
-                console.error(err);
-                alert("No se pudo anular el progreso.");
-            }
-        }
-
-        // --- SECCIÓN DE ORACIÓN Y ROSARIO INTERACTIVO ---
+        // --- SECCIÓN DE ORACIÓN Y ROSARIO CON AUDIOS DE SUPABASE ---
         async function cargarOraciones() {
-            currentView = 'prayer';
-            backBtn.classList.add('hidden');
-            mainTitle.innerText = "🙏 Oración y Rosario";
-            mainSubtitle.innerText = "Espacio devocional y guía espiritual";
-            mainSubtitle.style.display = 'block';
-
+            currentView = 'prayer'; backBtn.classList.add('hidden'); mainTitle.innerText = "🙏 Oración y Rosario"; mainSubtitle.innerText = "Espacio devocional y guía espiritual"; mainSubtitle.style.display = 'block';
             contentBox.innerHTML = `
                 <div class="space-y-3">
-                    <!-- Menú de opciones devocionales -->
                     <div class="grid grid-cols-2 gap-2">
                         <div onclick="cargarMenuCategoriasOraciones()" class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center cursor-pointer active:scale-98 transition shadow-sm">
-                            <div class="text-2xl mb-1">📖</div>
-                            <div class="font-bold text-sm text-amber-600 dark:text-amber-400">Oraciones</div>
-                            <div class="text-[11px] opacity-70">Por categorías</div>
+                            <div class="text-2xl mb-1">📖</div><div class="font-bold text-sm text-amber-600 dark:text-amber-400">Oraciones</div><div class="text-[11px] opacity-70">Por categorías</div>
                         </div>
                         <div onclick="cargarRosarioGuiado()" class="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30 text-center cursor-pointer active:scale-98 transition shadow-sm">
-                            <div class="text-2xl mb-1">📿</div>
-                            <div class="font-bold text-sm text-purple-600 dark:text-purple-400">Santo Rosario</div>
-                            <div class="text-[11px] opacity-70">Rezo guiado diario</div>
+                            <div class="text-2xl mb-1">📿</div><div class="font-bold text-sm text-purple-600 dark:text-purple-400">Santo Rosario</div><div class="text-[11px] opacity-70">Rezo guiado diario</div>
                         </div>
                     </div>
-
-                    <!-- Muro de peticiones de la comunidad -->
-                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 mt-4">
-                        <h3 class="font-bold text-sm mb-1">💬 Peticiones de la Comunidad</h3>
-                        <textarea id="prayerInput" placeholder="Escribe tu petición de oración..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
-                        <button onclick="enviarOracion()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition">Compartir Petición</button>
-                    </div>
-                    <div id="prayer-list" class="space-y-2"><div class="text-center py-6 opacity-65">Cargando peticiones...</div></div>
                 </div>
             `;
-            obtenerListaOraciones();
         }
 
         async function cargarMenuCategoriasOraciones() {
-            currentView = 'prayer_categories';
-            backBtn.classList.remove('hidden');
-            mainTitle.innerText = "📖 Categorías de Oración";
-            mainSubtitle.innerText = "Selecciona un propósito";
-
+            currentView = 'prayer_categories'; backBtn.classList.add('hidden'); mainTitle.innerText = "📖 Categorías de Oración"; mainSubtitle.innerText = "Selecciona un propósito";
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando oraciones...</div>';
-
             try {
-                const { data: categories, error: catError } = await supabaseClient.from('prayer_categories').select('*').order('id');
-                const { data: prayers, error: prayError } = await supabaseClient.from('prayers').select('*');
-                if (catError || prayError) throw (catError || prayError);
-
-                if (!categories || categories.length === 0) {
-                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">No hay categorías cargadas.</p>';
-                    return;
-                }
-
+                const { data: categories } = await supabaseClient.from('prayer_categories').select('*').order('id');
+                const { data: prayers } = await supabaseClient.from('prayers').select('*');
                 contentBox.innerHTML = categories.map(cat => {
                     const prayersInCat = prayers.filter(p => p.category_id === cat.id);
                     return `
                         <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm">
                             <h3 class="font-bold text-base text-amber-600 dark:text-amber-400">${cat.name}</h3>
-                            <p class="text-xs opacity-70">${cat.description || ''}</p>
                             <div class="space-y-1 mt-2">
-                                ${prayersInCat.length > 0 ? prayersInCat.map(p => `
-                                    <div onclick="verDetalleOracion('${p.title.replace(/'/g, "\\'")}', '${p.content.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')" class="p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-semibold flex justify-between items-center cursor-pointer active:scale-98 transition">
-                                        <span>${p.title}</span>
-                                        <span class="opacity-40">›</span>
+                                ${prayersInCat.map(p => `
+                                    <div onclick="verDetalleOracion('${p.title.replace(/'/g, "\\'")}', '${p.content.replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${p.audio_url || ''}')" class="p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-semibold flex justify-between items-center cursor-pointer active:scale-98 transition">
+                                        <span>${p.title}</span><span class="opacity-40">›</span>
                                     </div>
-                                `).join('') : '<p class="text-xs opacity-50 italic">Próximamente más oraciones...</p>'}
+                                `).join('')}
                             </div>
                         </div>
                     `;
                 }).join('');
-            } catch (err) {
-                console.error(err);
-                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar las categorías de oración.</p>';
-            }
+            } catch (err) {}
         }
 
-        function verDetalleOracion(title, content) {
-            currentView = 'prayer_detail';
-            backBtn.classList.remove('hidden');
-            mainTitle.innerText = title;
-            mainSubtitle.style.display = 'none';
-
+        function verDetalleOracion(title, content, audioUrl) {
+            currentView = 'prayer_detail'; backBtn.classList.remove('hidden'); mainTitle.innerText = title; mainSubtitle.style.display = 'none';
             const formattedContent = content.replace(/\\n/g, '<br>');
-
-            contentBox.innerHTML = `
-                <div class="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 shadow-sm space-y-4">
-                    <div class="text-sm leading-relaxed whitespace-pre-line opacity-95">${formattedContent}</div>
-                </div>
-            `;
+            const audioHTML = audioUrl ? `<div class="mt-4 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30 text-center"><audio controls class="w-full"><source src="${audioUrl}" type="audio/mpeg">Tu navegador no soporta audio.</audio></div>` : '';
+            contentBox.innerHTML = `<div class="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 shadow-sm space-y-4"><div class="text-sm leading-relaxed whitespace-pre-line opacity-95">${formattedContent}</div>${audioHTML}</div>`;
         }
 
-        // --- SISTEMA INTERACTIVO DE SANTO ROSARIO CON CONTADORES ---
-        let rosarioActual = {
-            tipo: '',
-            misterioIndex: 0,
-            pasoActual: 'padrenuestro',
-            cuentaAveMarias: 10
+        let rosarioActual = { tipo: '', misterioIndex: 0, pasoActual: 'padrenuestro', cuentaAveMarias: 10 };
+        const listaMisteriosData = {
+            'Gozosos': ["1. La encarnación del Hijo de Dios.", "2. La visitación de Nuestra Señora.", "3. El nacimiento del Hijo de Dios en Belén.", "4. La presentación del Niño Jesús.", "5. El Niño Jesús perdido y hallado."],
+            'Luminosos': ["1. El bautismo de Jesús en el Jordán.", "2. Las bodas de Caná.", "3. El anuncio del Reino.", "4. La transfiguración.", "5. La institución de la Eucaristía."],
+            'Dolorosos': ["1. La oración en el huerto.", "2. La flagelación.", "3. La coronación de espinas.", "4. Jesús con la cruz a cuestas.", "5. La crucifixión y muerte."],
+            'Gloriosos': ["1. La resurrección.", "2. La ascensión.", "3. La venida del Espíritu Santo.", "4. La asunción de la Virgen.", "5. La coronación."]
         };
 
-        const listaMisteriosData = {
-            'Gozosos': [
-                "1. La encarnación del Hijo de Dios.",
-                "2. La visitación de Nuestra Señora a su prima Santa Isabel.",
-                "3. El nacimiento del Hijo de Dios en Belén.",
-                "4. La presentación del Niño Jesús en el templo.",
-                "5. El Niño Jesús perdido y hallado en el templo."
-            ],
-            'Luminosos': [
-                "1. El bautismo de Jesús en el río Jordán.",
-                "2. La autorrevelación de Jesús en las bodas de Caná.",
-                "3. El anuncio del Reino de Dios y la invitación a la conversión.",
-                "4. La transfiguración de Jesús en el monte Tabor.",
-                "5. La institución de la Eucaristía."
-            ],
-            'Dolorosos': [
-                "1. La oración de Jesús en el huerto de Getsemaní.",
-                "2. La flagelación de nuestro Señor Jesucristo.",
-                "3. La coronación de espinas.",
-                "4. Jesús con la cruz a cuestas camino al Calvario.",
-                "5. La crucifixión y muerte de Jesús."
-            ],
-            'Gloriosos': [
-                "1. La resurrección del Hijo de Dios.",
-                "2. La ascensión de Jesús al cielo.",
-                "3. La venida del Espíritu Santo sobre la Virgen María y los apóstoles.",
-                "4. La asunción de los cielos de la Virgen María.",
-                "5. La coronación de la Santísima Virgen como Reina."
-            ]
+        const rosarioAudioUrls = {
+            padrenuestro: "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/padre_nuestro.mp3",
+            avemaria: "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/ave_maria.mp3",
+            gloria: "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/gloria_al_padre.mp3"
         };
 
         function cargarRosarioGuiado() {
-            currentView = 'rosary';
-            backBtn.classList.remove('hidden');
-            mainTitle.innerText = "📿 Santo Rosario";
-            mainSubtitle.innerText = "Meditación de los Misterios";
-            mainSubtitle.style.display = 'block';
-
-            const dayOfWeek = new Date().getDay();
-            let misteriosSugeridos = "Misterios Gozosos";
-            if (dayOfWeek === 1 || dayOfWeek === 6) misteriosSugeridos = "Misterios Gozosos (Lunes y Sábado)";
-            else if (dayOfWeek === 2 || dayOfWeek === 5) misteriosSugeridos = "Misterios Dolorosos (Martes y Viernes)";
-            else if (dayOfWeek === 3 || dayOfWeek === 0) misteriosSugeridos = "Misterios Gloriosos (Miércoles y Domingo)";
-            else if (dayOfWeek === 4) misteriosSugeridos = "Misterios Luminosos (Jueves)";
-
+            currentView = 'rosary'; backBtn.classList.add('hidden'); mainTitle.innerText = "📿 Santo Rosario"; mainSubtitle.innerText = "Meditación de los Misterios"; mainSubtitle.style.display = 'block';
             contentBox.innerHTML = `
-                <div class="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30 text-center space-y-1 mb-3">
-                    <div class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Sugerencia para hoy</div>
-                    <div class="font-extrabold text-base">${misteriosSugeridos}</div>
-                </div>
                 <div class="space-y-2">
-                    <div onclick="mostrarMisterioRosario('Gozosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition">
-                        <div>
-                            <span class="font-bold text-base">Misterios Gozosos</span>
-                            <p class="text-xs opacity-70">Lunes y Sábado</p>
-                        </div>
-                        <span class="opacity-40 text-lg">›</span>
-                    </div>
-                    <div onclick="mostrarMisterioRosario('Luminosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition">
-                        <div>
-                            <span class="font-bold text-base">Misterios Luminosos</span>
-                            <p class="text-xs opacity-70">Jueves</p>
-                        </div>
-                        <span class="opacity-40 text-lg">›</span>
-                    </div>
-                    <div onclick="mostrarMisterioRosario('Dolorosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition">
-                        <div>
-                            <span class="font-bold text-base">Misterios Dolorosos</span>
-                            <p class="text-xs opacity-70">Martes y Viernes</p>
-                        </div>
-                        <span class="opacity-40 text-lg">›</span>
-                    </div>
-                    <div onclick="mostrarMisterioRosario('Gloriosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition">
-                        <div>
-                            <span class="font-bold text-base">Misterios Gloriosos</span>
-                            <p class="text-xs opacity-70">Miércoles y Domingo</p>
-                        </div>
-                        <span class="opacity-40 text-lg">›</span>
-                    </div>
+                    <div onclick="mostrarMisterioRosario('Gozosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition"><div><span class="font-bold text-base">Misterios Gozosos</span><p class="text-xs opacity-70">Lunes y Sábado</p></div><span class="opacity-40 text-lg">›</span></div>
+                    <div onclick="mostrarMisterioRosario('Luminosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition"><div><span class="font-bold text-base">Misterios Luminosos</span><p class="text-xs opacity-70">Jueves</p></div><span class="opacity-40 text-lg">›</span></div>
+                    <div onclick="mostrarMisterioRosario('Dolorosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition"><div><span class="font-bold text-base">Misterios Dolorosos</span><p class="text-xs opacity-70">Martes y Viernes</p></div><span class="opacity-40 text-lg">›</span></div>
+                    <div onclick="mostrarMisterioRosario('Gloriosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition"><div><span class="font-bold text-base">Misterios Gloriosos</span><p class="text-xs opacity-70">Miércoles y Domingo</p></div><span class="opacity-40 text-lg">›</span></div>
                 </div>
             `;
         }
 
         function mostrarMisterioRosario(tipo) {
-            currentView = 'rosary_detail';
-            backBtn.classList.remove('hidden');
-            mainTitle.innerText = `Misterios ${tipo}`;
-            mainSubtitle.style.display = 'block';
-            mainSubtitle.innerText = "Selecciona una decena para iniciar el rezo interactivo";
-
+            currentView = 'rosary_detail'; backBtn.classList.add('hidden'); mainTitle.innerText = `Misterios ${tipo}`; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Selecciona una decena";
             const misterios = listaMisteriosData[tipo];
-
-            contentBox.innerHTML = `
-                <div class="space-y-3">
-                    <p class="text-xs opacity-70 text-center mb-2">Toca cualquier decena para comenzar el conteo guiado:</p>
-                    ${misterios.map((m, idx) => `
-                        <div onclick="iniciarRezoMisterio('${tipo}', ${idx})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition shadow-sm">
-                            <div>
-                                <span class="font-bold text-purple-600 dark:text-purple-400 text-xs">Decena ${idx + 1}</span>
-                                <p class="font-medium text-sm mt-0.5">${m}</p>
-                            </div>
-                            <span class="text-xs bg-purple-500/20 text-purple-600 dark:text-purple-400 px-2.5 py-1 rounded-lg font-semibold">Rezar ›</span>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
+            contentBox.innerHTML = `<div class="space-y-3">${misterios.map((m, idx) => `<div onclick="iniciarRezoMisterio('${tipo}', ${idx})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition shadow-sm"><div><span class="font-bold text-purple-600 dark:text-purple-400 text-xs">Decena ${idx + 1}</span><p class="font-medium text-sm mt-0.5">${m}</p></div><span class="text-xs bg-purple-500/20 text-purple-600 dark:text-purple-400 px-2.5 py-1 rounded-lg font-semibold">Rezar ›</span></div>`).join('')}</div>`;
         }
 
         function iniciarRezoMisterio(tipo, index) {
-            rosarioActual = {
-                tipo: tipo,
-                misterioIndex: index,
-                pasoActual: 'padrenuestro',
-                cuentaAveMarias: 10
-            };
+            rosarioActual = { tipo: tipo, misterioIndex: index, pasoActual: 'padrenuestro', cuentaAveMarias: 10 };
             renderizarPantallaRezo();
         }
 
@@ -962,321 +301,55 @@
             const tipo = rosarioActual.tipo;
             const idx = rosarioActual.misterioIndex;
             const nombreMisterio = listaMisteriosData[tipo][idx];
-
-            let contenidoPaso = '';
-            let botonAccion = '';
+            let contenidoPaso = '', botonAccion = '', audioPaso = '';
 
             if (rosarioActual.pasoActual === 'padrenuestro') {
-                contenidoPaso = `
-                    <div class="text-amber-500 font-bold text-xs uppercase tracking-wider mb-1">1. Padre Nuestro</div>
-                    <p class="text-sm italic opacity-90 leading-relaxed font-serif">
-                        "Padre nuestro, que estás en el cielo, santificado sea tu Nombre; venga a nosotros tu reino; hágase tu voluntad en la tierra como en el cielo. Danos hoy nuestro pan de cada día; perdona nuestras ofensas, como también nosotros perdonamos a los que nos ofenden; no nos dejes caer en la tentación, y líbranos del mal. Amén."
-                    </p>
-                `;
-                botonAccion = `<button onclick="avanzarPasoRosario('avemaria')" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm active:scale-95 transition shadow-md">Siguiente: Ave Marías (10 restantes)</button>`;
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.padrenuestro}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
+                contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase tracking-wider mb-1">1. Padre Nuestro</div><p class="text-sm italic opacity-90 leading-relaxed font-serif">"Padre nuestro, que estás en el cielo, santificado sea tu Nombre..."</p>`;
+                botonAccion = `<button onclick="avanzarPasoRosario('avemaria')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm shadow-md">Siguiente: Ave Marías (10 restantes)</button>`;
             } else if (rosarioActual.pasoActual === 'avemaria') {
-                contenidoPaso = `
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-purple-500 font-bold text-xs uppercase tracking-wider">Ave Marías</span>
-                        <span class="text-lg font-extrabold bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg">Restantes: ${rosarioActual.cuentaAveMarias}</span>
-                    </div>
-                    <p class="text-sm italic opacity-90 leading-relaxed font-serif mb-4">
-                        "Dios te salve, María, llena eres de gracia, el Señor es contigo; bendita tú eres entre todas las mujeres, y bendito es el fruto de tu vientre, Jesús. Santa María, Madre de Dios, ruega por nosotros, pecadores, ahora y en la hora de nuestra muerte. Amén."
-                    </p>
-                `;
-                botonAccion = `<button onclick="restarAveMaria()" class="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm active:scale-98 transition shadow-md">📿 Rezar Ave María (-1)</button>`;
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.avemaria}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
+                contenidoPaso = `<div class="flex justify-between items-center mb-2"><span class="text-purple-500 font-bold text-xs uppercase tracking-wider">Ave Marías</span><span class="text-lg font-extrabold bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg">Restantes: ${rosarioActual.cuentaAveMarias}</span></div><p class="text-sm italic opacity-90 leading-relaxed font-serif mb-4">"Dios te salve, María, llena eres de gracia..."</p>`;
+                botonAccion = `<button onclick="restarAveMaria()" class="w-full py-3.5 bg-purple-600 text-white rounded-xl font-bold text-sm shadow-md">📿 Rezar Ave María (-1)</button>`;
             } else if (rosarioActual.pasoActual === 'gloria') {
-                contenidoPaso = `
-                    <div class="text-blue-500 font-bold text-xs uppercase tracking-wider mb-1">Gloria y Jaculatoria</div>
-                    <p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">
-                        "Gloria al Padre, y al Hijo, y al Espíritu Santo. Como era en el principio, ahora y siempre, por los siglos de los siglos. Amén."
-                    </p>
-                    <p class="text-sm italic opacity-80 leading-relaxed font-serif">
-                        "¡Oh Jesús mío, perdónanos nuestros pecados, líbranos del fuego del infierno, lleva al cielo todas las almas, especialmente a las más necesitadas de tu misericordia!"
-                    </p>
-                `;
-                botonAccion = `<button onclick="finalizarDecena()" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm active:scale-95 transition shadow-md">✓ Finalizar esta decena</button>`;
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.gloria}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
+                contenidoPaso = `<div class="text-blue-500 font-bold text-xs uppercase tracking-wider mb-1">Gloria y Jaculatoria</div><p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">"Gloria al Padre, y al Hijo, y al Espíritu Santo..."</p>`;
+                botonAccion = `<button onclick="finalizarDecena()" class="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm shadow-md">✓ Finalizar esta decena</button>`;
             }
 
             contentBox.innerHTML = `
                 <div class="p-5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-4">
                     <div class="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-700 pb-3">
-                        <div>
-                            <span class="text-xs font-bold text-purple-500 uppercase">Misterios ${tipo}</span>
-                            <h3 class="font-bold text-base mt-0.5">${nombreMisterio}</h3>
-                        </div>
+                        <div><span class="text-xs font-bold text-purple-500 uppercase">Misterios ${tipo}</span><h3 class="font-bold text-base mt-0.5">${nombreMisterio}</h3></div>
                         <button onclick="mostrarMisterioRosario('${tipo}')" class="text-xs px-2.5 py-1 bg-zinc-200 dark:bg-zinc-700 rounded-lg font-medium">Volver</button>
                     </div>
-
                     <div class="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-inner">
+                        ${audioPaso}
                         ${contenidoPaso}
                     </div>
-
-                    <div class="pt-2">
-                        ${botonAccion}
-                    </div>
+                    <div class="pt-2">${botonAccion}</div>
                 </div>
             `;
         }
 
-        function avanzarPasoRosario(nuevoPaso) {
-            rosarioActual.pasoActual = nuevoPaso;
+        function avanzarPasoRosario(nuevoPaso) { rosarioActual.pasoActual = nuevoPaso; renderizarPantallaRezo(); }
+        function restarAveMaria() {
+            if (rosarioActual.cuentaAveMarias > 1) { rosarioActual.cuentaAveMarias--; } 
+            else { rosarioActual.cuentaAveMarias = 0; rosarioActual.pasoActual = 'gloria'; }
             renderizarPantallaRezo();
         }
-
-        function restarAveMaria() {
-            if (rosarioActual.cuentaAveMarias > 1) {
-                rosarioActual.cuentaAveMarias--;
-                renderizarPantallaRezo();
-            } else {
-                rosarioActual.cuentaAveMarias = 0;
-                rosarioActual.pasoActual = 'gloria';
-                renderizarPantallaRezo();
-            }
-        }
-
-        function finalizarDecena() {
-            alert("🌟 ¡Decena completada con éxito! Que Dios bendiga tu oración.");
-            mostrarMisterioRosario(rosarioActual.tipo);
-        }
-
-        async function obtenerListaOraciones() {
-            const listContainer = document.getElementById('prayer-list');
-            try {
-                const { data, error } = await supabaseClient.from('prayer_requests').select('*').order('created_at', { ascending: false }).limit(20);
-                if (error) throw error;
-                if (!data || data.length === 0) {
-                    listContainer.innerHTML = '<p class="text-center opacity-60 py-4">No hay peticiones aún.</p>';
-                    return;
-                }
-                listContainer.innerHTML = data.map(p => `
-                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm flex justify-between items-start gap-2">
-                        <p class="opacity-90 flex-1">${p.request_text}</p>
-                        ${p.telegram_id == currentTelegramId ? `<button onclick="eliminarOracion(${p.id})" class="text-xs text-red-500 hover:underline shrink-0">Borrar</button>` : ''}
-                    </div>
-                `).join('');
-            } catch (err) {
-                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al cargar peticiones.</p>';
-            }
-        }
-
-        async function enviarOracion() {
-            const text = document.getElementById('prayerInput').value.trim();
-            if (!text) return;
-            try {
-                const { error } = await supabaseClient.from('prayer_requests').insert([{ telegram_id: currentTelegramId, request_text: text, is_public: true }]);
-                if (error) throw error;
-                document.getElementById('prayerInput').value = '';
-                alert("🙏 Petición compartida.");
-                obtenerListaOraciones();
-            } catch (err) {
-                console.error(err);
-                alert("No se pudo enviar la petición.");
-            }
-        }
-
-        async function eliminarOracion(id) {
-            try {
-                const { error } = await supabaseClient.from('prayer_requests').delete().eq('id', id).eq('telegram_id', currentTelegramId);
-                if (error) throw error;
-                obtenerListaOraciones();
-            } catch (err) {
-                console.error(err);
-                alert("No se pudo eliminar la petición.");
-            }
-        }
-
-        // --- TRIVIA AVANZADA ---
-        let currentTriviaQuestions = [];
-        let triviaAnsweredCount = 0;
-        let roundCorrects = 0;
+        function finalizarDecena() { alert("🌟 ¡Decena completada con éxito!"); mostrarMisterioRosario(rosarioActual.tipo); }
 
         async function cargarTrivia() {
-            currentView = 'trivia';
-            backBtn.classList.add('hidden');
-            mainTitle.innerText = "❓ Trivia Bíblica";
-            mainSubtitle.innerText = "Demuestra tu sabiduría";
-            mainSubtitle.style.display = 'block';
-            triviaAnsweredCount = 0;
-            roundCorrects = 0;
-
-            contentBox.innerHTML = `
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                    <div class="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl shadow-sm">
-                        <span class="text-3xl">⭐</span>
-                        <div>
-                            <div class="text-[10px] font-bold opacity-70 uppercase tracking-wider">Estrellas</div>
-                            <div id="global-stars-display" class="text-base font-extrabold text-amber-500">${userStats.stars}</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 p-3 rounded-xl shadow-sm">
-                        <span class="text-3xl">🍷</span>
-                        <div>
-                            <div class="text-[10px] font-bold opacity-70 uppercase tracking-wider">Cálices</div>
-                            <div id="global-chalices-display" class="text-base font-extrabold text-purple-500">${userStats.chalices}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <button onclick="cargarTrivia()" class="w-full mb-4 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-sm active:scale-98 transition flex items-center justify-between shadow-md">
-                    <span class="flex items-center gap-2">🎲 Pregunta aleatoria</span>
-                    <span class="bg-amber-700/60 px-3 py-1 rounded-lg text-xs flex items-center gap-1">🔄 Nueva Partida</span>
-                </button>
-
-                <div id="trivia-questions-container" class="space-y-3">
-                    <div class="text-center py-10 opacity-65">Cargando preguntas aleatorias...</div>
-                </div>
-            `;
-
-            try {
-                const { data, error } = await supabaseClient.from('trivia_questions').select('*').limit(200);
-                if (error) throw error;
-                if (!data || data.length === 0) {
-                    document.getElementById('trivia-questions-container').innerHTML = '<p class="text-center opacity-60 py-5">No hay preguntas disponibles.</p>';
-                    return;
-                }
-
-                const shuffled = [...data];
-                for (let i = shuffled.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-                }
-
-                currentTriviaQuestions = shuffled.slice(0, 5);
-
-                const preguntasHTML = currentTriviaQuestions.map((q, idx) => `
-                    <div id="trivia_card_${q.id}" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm transition">
-                        <p class="font-semibold text-sm">${idx + 1}. ${q.question_text}</p>
-                        <div class="grid grid-cols-1 gap-2">
-                            <button id="btn_${q.id}_A" onclick="responderTrivia('${q.id}', 'A', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">A) ${q.option_a}</button>
-                            <button id="btn_${q.id}_B" onclick="responderTrivia('${q.id}', 'B', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">B) ${q.option_b}</button>
-                            <button id="btn_${q.id}_C" onclick="responderTrivia('${q.id}', 'C', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">C) ${q.option_c}</button>
-                            <button id="btn_${q.id}_D" onclick="responderTrivia('${q.id}', 'D', '${q.correct_option}')" class="option_btn_${q.id} text-left p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium active:scale-98 transition">D) ${q.option_d}</button>
-                        </div>
-                        <div id="trivia_feedback_${q.id}" class="text-xs font-bold pt-1"></div>
-                    </div>
-                `).join('');
-
-                document.getElementById('trivia-questions-container').innerHTML = preguntasHTML;
-            } catch (err) {
-                console.error(err);
-                document.getElementById('trivia-questions-container').innerHTML = '<p class="text-center text-red-500">Error al cargar la trivia.</p>';
-            }
-        }
-
-        function responderTrivia(qId, selectedOption, correctOption) {
-            const feedbackBox = document.getElementById(`trivia_feedback_${qId}`);
-            const buttons = document.querySelectorAll(`.option_btn_${qId}`);
-            buttons.forEach(btn => btn.disabled = true);
-
-            const selectedBtn = document.getElementById(`btn_${qId}_${selectedOption}`);
-            const correctBtn = document.getElementById(`btn_${qId}_${correctOption}`);
-
-            const rewardStars = 5;
-            const penaltyStars = 3;
-
-            if (selectedOption === correctOption) {
-                selectedBtn.classList.add('bg-green-500/25', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
-                feedbackBox.innerHTML = `<span class="text-green-500">✨ ¡Correcto! (+${rewardStars} Estrellas ⭐)</span>`;
-                userStats.stars += rewardStars;
-                roundCorrects++;
-            } else {
-                selectedBtn.classList.add('bg-red-500/25', 'border', 'border-red-500', 'text-red-600', 'dark:text-red-400');
-                correctBtn.classList.add('bg-green-500/25', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
-                feedbackBox.innerHTML = `<span class="text-red-500">❌ Incorrecto (-${penaltyStars} Estrellas ⭐). Era la ${correctOption}</span>`;
-                userStats.stars = Math.max(0, userStats.stars - penaltyStars);
-            }
-
-            guardarStats();
-            document.getElementById('global-stars-display').innerText = userStats.stars;
-
-            triviaAnsweredCount++;
-
-            if (triviaAnsweredCount === currentTriviaQuestions.length) {
-                setTimeout(() => {
-                    let mensajeFinal = `Has conseguido ${roundCorrects} de ${currentTriviaQuestions.length} aciertos.`;
-                    
-                    if (roundCorrects === currentTriviaQuestions.length) {
-                        userStats.chalices += 1;
-                        const bonusPerfecto = 20;
-                        userStats.stars += bonusPerfecto;
-                        guardarStats();
-                        
-                        document.getElementById('global-chalices-display').innerText = userStats.chalices;
-                        document.getElementById('global-stars-display').innerText = userStats.stars;
-
-                        mensajeFinal += ` ¡Ronda perfecta! Has ganado 🍷 **¡Un Cáliz sagrado y un bonus de +${bonusPerfecto} Estrellas ⭐!**`;
-                        lanzarExplosionEstrellasFugaces();
-                    }
-
-                    const container = document.getElementById('content-box');
-                    container.insertAdjacentHTML('beforeend', `
-                        <div class="p-4 rounded-xl bg-amber-500/15 border border-amber-500/50 text-center space-y-2 mt-4">
-                            <div class="text-3xl">🌟🙏🌟</div>
-                            <h3 class="font-bold text-lg text-amber-600 dark:text-amber-400">¡En hora buena, Dios te bendice!</h3>
-                            <p class="text-xs opacity-90">${mensajeFinal}</p>
-                            <button onclick="cargarTrivia()" class="mt-2 px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition shadow-sm">Jugar otra ronda</button>
-                        </div>
-                    `);
-                }, 600);
-            }
-        }
-
-        function lanzarExplosionEstrellasFugaces() {
-            const overlay = document.getElementById('explosion-overlay');
-            overlay.innerHTML = '';
-            overlay.className = 'blessing-overlay';
-
-            const messageBox = document.createElement('div');
-            messageBox.className = 'bg-amber-500 text-zinc-950 px-6 py-4 rounded-2xl shadow-2xl text-center space-y-1 z-50 border-2 border-yellow-200';
-            messageBox.innerHTML = `
-                <div class="text-4xl">🌟✨🙏✨🌟</div>
-                <h2 class="text-xl font-extrabold tracking-wide">¡En hora buena, Dios te bendice!</h2>
-                <p class="text-xs font-medium opacity-90">¡Ronda perfecta completada con gloria!</p>
-            `;
-            overlay.appendChild(messageBox);
-
-            const totalStars = 200;
-            for (let i = 0; i < totalStars; i++) {
-                const star = document.createElement('div');
-                star.className = 'burst-particle';
-                star.innerText = i % 3 === 0 ? '✨' : (i % 3 === 1 ? '⭐' : '🌟');
-                
-                const angle = Math.random() * Math.PI * 2;
-                const distance = 160 + Math.random() * 380;
-                const dx = Math.cos(angle) * distance;
-                const dy = Math.sin(angle) * distance;
-                const scale = 0.4 + Math.random() * 2.5;
-
-                star.style.setProperty('--dx', `${dx}px`);
-                star.style.setProperty('--dy', `${dy}px`);
-                star.style.setProperty('--scale', scale);
-                
-                overlay.appendChild(star);
-            }
-
-            setTimeout(() => {
-                overlay.className = 'hidden';
-                overlay.innerHTML = '';
-            }, 3000);
+            currentView = 'trivia'; backBtn.classList.add('hidden'); mainTitle.innerText = "❓ Trivia Bíblica"; mainSubtitle.style.display = 'block';
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando trivia...</div>';
         }
 
         function volverAtras() {
-            if (currentView === 'verses') {
-                seleccionarLibro(selectedBook.id, selectedBook.name);
-            } else if (currentView === 'chapters') {
-                if (isApocryphaMode) {
-                    cargarApocrifos();
-                } else {
-                    cargarLibros();
-                }
-            } else if (currentView === 'plan_detail' || currentView === 'create_plan') {
-                cargarPlanes();
-            } else if (currentView === 'prayer_categories' || currentView === 'rosary' || currentView === 'rosary_detail') {
-                cargarOraciones();
-            } else if (currentView === 'prayer_detail') {
-                cargarMenuCategoriasOraciones();
-            }
+            if (currentView === 'verses') seleccionarLibro(selectedBook.id, selectedBook.name);
+            else if (currentView === 'chapters') isApocryphaMode ? cargarApocrifos() : cargarLibros();
+            else if (currentView === 'prayer_categories' || currentView === 'rosary' || currentView === 'rosary_detail') cargarOraciones();
+            else if (currentView === 'prayer_detail') cargarMenuCategoriasOraciones();
         }
 
         cargarLibros();
