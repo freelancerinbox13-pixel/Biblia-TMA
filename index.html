@@ -243,7 +243,8 @@
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando oraciones...</div>';
             try {
                 const { data: categories } = await supabaseClient.from('prayer_categories').select('*').order('id');
-                const { data: prayers } = await supabaseClient.from('prayers').select('*');
+                // Se incluye explícitamente audio_url en la consulta para que las oraciones tengan el enlace multimedia
+                const { data: prayers } = await supabaseClient.from('prayers').select('id, title, content, category_id, audio_url');
                 contentBox.innerHTML = categories.map(cat => {
                     const prayersInCat = prayers.filter(p => p.category_id === cat.id);
                     return `
@@ -265,7 +266,7 @@
         function verDetalleOracion(title, content, audioUrl) {
             currentView = 'prayer_detail'; backBtn.classList.remove('hidden'); mainTitle.innerText = title; mainSubtitle.style.display = 'none';
             const formattedContent = content.replace(/\\n/g, '<br>');
-            const audioHTML = audioUrl ? `<div class="mt-4 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30 text-center"><audio controls autoplay class="w-full"><source src="${audioUrl}" type="audio/mpeg">Tu navegador no soporta audio.</audio></div>` : '';
+            const audioHTML = audioUrl ? `<div class="mt-4 p-3 bg-amber-500/10 rounded-xl border border-amber-500/30 text-center"><audio controls class="w-full"><source src="${audioUrl}" type="audio/mpeg">Tu navegador no soporta audio.</audio></div>` : '';
             contentBox.innerHTML = `<div class="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 shadow-sm space-y-4"><div class="text-sm leading-relaxed whitespace-pre-line opacity-95">${formattedContent}</div>${audioHTML}</div>`;
         }
 
@@ -307,6 +308,7 @@
         }
 
         function renderizarPantallaRezo() {
+            currentView = 'rosary_step'; backBtn.classList.remove('hidden');
             const tipo = rosarioActual.tipo;
             const idx = rosarioActual.misterioIndex;
             const nombreMisterio = listaMisteriosData[tipo][idx];
@@ -330,7 +332,6 @@
                 <div class="p-5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-4">
                     <div class="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-700 pb-3">
                         <div><span class="text-xs font-bold text-purple-500 uppercase">Misterios ${tipo}</span><h3 class="font-bold text-base mt-0.5">${nombreMisterio}</h3></div>
-                        <button onclick="mostrarMisterioRosario('${tipo}')" class="text-xs px-2.5 py-1 bg-zinc-200 dark:bg-zinc-700 rounded-lg font-medium">Volver</button>
                     </div>
                     <div class="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-inner">
                         ${audioPaso}
@@ -389,8 +390,10 @@
         function volverAtras() {
             if (currentView === 'verses') seleccionarLibro(selectedBook.id, selectedBook.name);
             else if (currentView === 'chapters') isApocryphaMode ? cargarApocrifos() : cargarLibros();
-            else if (currentView === 'prayer_categories' || currentView === 'rosary' || currentView === 'prayer_detail') cargarOraciones();
+            else if (currentView === 'prayer_categories') cargarOraciones();
+            else if (currentView === 'prayer_detail') cargarMenuCategoriasOraciones();
             else if (currentView === 'rosary_detail') cargarRosarioGuiado();
+            else if (currentView === 'rosary_step') mostrarMisterioRosario(rosarioActual.tipo);
         }
 
         cargarLibros();
