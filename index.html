@@ -740,7 +740,7 @@
             }
         }
 
-        // --- NUEVA SECCIÓN DE ORACIÓN Y ROSARIO ---
+        // --- SECCIÓN DE ORACIÓN Y ROSARIO INTERACTIVO ---
         async function cargarOraciones() {
             currentView = 'prayer';
             backBtn.classList.add('hidden');
@@ -832,19 +832,58 @@
             `;
         }
 
+        // --- SISTEMA INTERACTIVO DE SANTO ROSARIO CON CONTADORES ---
+        let rosarioActual = {
+            tipo: '',
+            misterioIndex: 0,
+            pasoActual: 'padrenuestro', // 'padrenuestro', 'avemaria', 'gloria'
+            cuentaAveMarias: 10
+        };
+
+        const listaMisteriosData = {
+            'Gozosos': [
+                "1. La encarnación del Hijo de Dios.",
+                "2. La visitación de Nuestra Señora a su prima Santa Isabel.",
+                "3. El nacimiento del Hijo de Dios en Belén.",
+                "4. La presentación del Niño Jesús en el templo.",
+                "5. El Niño Jesús perdido y hallado en el templo."
+            ],
+            'Luminosos': [
+                "1. El bautismo de Jesús en el río Jordán.",
+                "2. La autorrevelación de Jesús en las bodas de Caná.",
+                "3. El anuncio del Reino de Dios y la invitación a la conversión.",
+                "4. La transfiguración de Jesús en el monte Tabor.",
+                "5. La institución de la Eucaristía."
+            ],
+            'Dolorosos': [
+                "1. La oración de Jesús en el huerto de Getsemaní.",
+                "2. La flagelación de nuestro Señor Jesucristo.",
+                "3. La coronación de espinas.",
+                "4. Jesús con la cruz a cuestas camino al Calvario.",
+                "5. La crucifixión y muerte de Jesús."
+            ],
+            'Gloriosos': [
+                "1. La resurrección del Hijo de Dios.",
+                "2. La ascensión de Jesús al cielo.",
+                "3. La venida del Espíritu Santo sobre la Virgen María y los apóstoles.",
+                "4. La asunción de los cielos de la Virgen María.",
+                "5. La coronación de la Santísima Virgen como Reina."
+            ]
+        };
+
         function cargarRosarioGuiado() {
             currentView = 'rosary';
             backBtn.classList.remove('hidden');
             mainTitle.innerText = "📿 Santo Rosario";
             mainSubtitle.innerText = "Meditación de los Misterios";
+            mainSubtitle.style.display = 'block';
 
-            const dayOfWeek = new Date().getDay(); // 0: Dom, 1: Lun, ...
+            const dayOfWeek = new Date().getDay();
             let misteriosSugeridos = "Misterios Gozosos";
-            let tipoMisterio = "gozoso";
-            if (dayOfWeek === 1 || dayOfWeek === 6) { misteriosSugeridos = "Misterios Gozosos (Lunes y Sábado)"; tipoMisterio = "gozoso"; }
-            else if (dayOfWeek === 2 || dayOfWeek === 5) { misteriosSugeridos = "Misterios Dolorosos (Martes y Viernes)"; tipoMisterio = "doloroso"; }
-            else if (dayOfWeek === 3 || dayOfWeek === 0) { misteriosSugeridos = "Misterios Gloriosos (Miércoles y Domingo)"; tipoMisterio = "glorioso"; }
-            else if (dayOfWeek === 4) { misteriosSugeridos = "Misterios Luminosos (Jueves)"; tipoMisterio = "luminoso"; }
+            if (dayOfWeek === 1 || dayOfWeek === 6) misteriosSugeridos = "Misterios Gozosos (Lunes y Sábado)";
+            else if (dayOfWeek === 2 || dayOfWeek === 5) misteriosSugeridos = "Misterios Dolorosos (Martes y Viernes)";
+            else if (dayOfWeek === 3 || dayOfWeek === 0) misteriosSugeridos = "Misterios Gloriosos (Miércoles y Domingo)";
+            else if (dayOfWeek === 4) misteriosSugeridos = "Misterios Luminosos (Jueves)";
 
             contentBox.innerHTML = `
                 <div class="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30 text-center space-y-1 mb-3">
@@ -888,55 +927,117 @@
             currentView = 'rosary_detail';
             backBtn.classList.remove('hidden');
             mainTitle.innerText = `Misterios ${tipo}`;
-            mainSubtitle.style.display = 'none';
+            mainSubtitle.style.display = 'block';
+            mainSubtitle.innerText = "Selecciona una decena para iniciar el rezo interactivo";
 
-            let misteriosList = [];
-            if (tipo === 'Gozosos') {
-                misteriosList = [
-                    "1. La encarnación del Hijo de Dios.",
-                    "2. La visitación de Nuestra Señora a su prima Santa Isabel.",
-                    "3. El nacimiento del Hijo de Dios en Belén.",
-                    "4. La presentación del Niño Jesús en el templo.",
-                    "5. El Niño Jesús perdido y hallado en el templo."
-                ];
-            } else if (tipo === 'Luminosos') {
-                misteriosList = [
-                    "1. El bautismo de Jesús en el río Jordán.",
-                    "2. La autorrevelación de Jesús en las bodas de Caná.",
-                    "3. El anuncio del Reino de Dios y la invitación a la conversión.",
-                    "4. La transfiguración de Jesús en el monte Tabor.",
-                    "5. La institución de la Eucaristía, expresión sacramental del misterio pascual."
-                ];
-            } else if (tipo === 'Dolorosos') {
-                misteriosList = [
-                    "1. La oración de Jesús en el huerto de Getsemaní.",
-                    "2. La flagelación de nuestro Señor Jesucristo.",
-                    "3. La coronación de espinas.",
-                    "4. Jesús con la cruz a cuestas camino al Calvario.",
-                    "5. La crucifixión y muerte de Jesús."
-                ];
-            } else if (tipo === 'Gloriosos') {
-                misteriosList = [
-                    "1. La resurrección del Hijo de Dios.",
-                    "2. La ascensión de Jesús al cielo.",
-                    "3. La venida del Espíritu Santo sobre la Virgen María y los apóstoles.",
-                    "4. La asunción de los cielos de la Virgen María.",
-                    "5. La coronación de la Santísima Virgen como Reina y Madre de todo lo creado."
-                ];
-            }
+            const misterios = listaMisteriosData[tipo];
 
             contentBox.innerHTML = `
                 <div class="space-y-3">
-                    <p class="text-xs opacity-70 text-center mb-2">Medita cada decena en su respectivo misterio:</p>
-                    ${misteriosList.map((m, idx) => `
-                        <div class="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-sm space-y-1 shadow-sm">
-                            <span class="font-bold text-purple-600 dark:text-purple-400 text-xs">Decena ${idx + 1}</span>
-                            <p class="font-medium">${m}</p>
-                            <p class="text-xs opacity-60 pt-1">1 Padre Nuestro, 10 Ave Marías, 1 Gloria y Oración de Fátima</p>
+                    <p class="text-xs opacity-70 text-center mb-2">Toca cualquier decena para comenzar el conteo guiado:</p>
+                    ${misterios.map((m, idx) => `
+                        <div onclick="iniciarRezoMisterio('${tipo}', ${idx})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition shadow-sm">
+                            <div>
+                                <span class="font-bold text-purple-600 dark:text-purple-400 text-xs">Decena ${idx + 1}</span>
+                                <p class="font-medium text-sm mt-0.5">${m}</p>
+                            </div>
+                            <span class="text-xs bg-purple-500/20 text-purple-600 dark:text-purple-400 px-2.5 py-1 rounded-lg font-semibold">Rezar ›</span>
                         </div>
                     `).join('')}
                 </div>
             `;
+        }
+
+        function iniciarRezoMisterio(tipo, index) {
+            rosarioActual = {
+                tipo: tipo,
+                misterioIndex: index,
+                pasoActual: 'padrenuestro',
+                cuentaAveMarias: 10
+            };
+            renderizarPantallaRezo();
+        }
+
+        function renderizarPantallaRezo() {
+            const tipo = rosarioActual.tipo;
+            const idx = rosarioActual.misterioIndex;
+            const nombreMisterio = listaMisteriosData[tipo][idx];
+
+            let contenidoPaso = '';
+            let botonAccion = '';
+
+            if (rosarioActual.pasoActual === 'padrenuestro') {
+                contenidoPaso = `
+                    <div class="text-amber-500 font-bold text-xs uppercase tracking-wider mb-1">1. Padre Nuestro</div>
+                    <p class="text-sm italic opacity-90 leading-relaxed font-serif">
+                        "Padre nuestro, que estás en el cielo, santificado sea tu Nombre; venga a nosotros tu reino; hágase tu voluntad en la tierra como en el cielo. Danos hoy nuestro pan de cada día; perdona nuestras ofensas, como también nosotros perdonamos a los que nos ofenden; no nos dejes caer en la tentación, y líbranos del mal. Amén."
+                    </p>
+                `;
+                botonAccion = `<button onclick="avanzarPasoRosario('avemaria')" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm active:scale-95 transition shadow-md">Siguiente: Ave Marías (10 restantes)</button>`;
+            } else if (rosarioActual.pasoActual === 'avemaria') {
+                contenidoPaso = `
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-purple-500 font-bold text-xs uppercase tracking-wider">Ave Marías</span>
+                        <span class="text-lg font-extrabold bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg">Restantes: ${rosarioActual.cuentaAveMarias}</span>
+                    </div>
+                    <p class="text-sm italic opacity-90 leading-relaxed font-serif mb-4">
+                        "Dios te salve, María, llena eres de gracia, el Señor es contigo; bendita tú eres entre todas las mujeres, y bendito es el fruto de tu vientre, Jesús. Santa María, Madre de Dios, ruega por nosotros, pecadores, ahora y en la hora de nuestra muerte. Amén."
+                    </p>
+                `;
+                botonAccion = `<button onclick="restarAveMaria()" class="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm active:scale-98 transition shadow-md">📿 Rezar Ave María (-1)</button>`;
+            } else if (rosarioActual.pasoActual === 'gloria') {
+                contenidoPaso = `
+                    <div class="text-blue-500 font-bold text-xs uppercase tracking-wider mb-1">Gloria y Jaculatoria</div>
+                    <p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">
+                        "Gloria al Padre, y al Hijo, y al Espíritu Santo. Como era en el principio, ahora y siempre, por los siglos de los siglos. Amén."
+                    </p>
+                    <p class="text-sm italic opacity-80 leading-relaxed font-serif">
+                        "¡Oh Jesús mío, perdónanos nuestros pecados, líbranos del fuego del infierno, lleva al cielo todas las almas, especialmente a las más necesitadas de tu misericordia!"
+                    </p>
+                `;
+                botonAccion = `<button onclick="finalizarDecena()" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm active:scale-95 transition shadow-md">✓ Finalizar esta decena</button>`;
+            }
+
+            contentBox.innerHTML = `
+                <div class="p-5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-700 pb-3">
+                        <div>
+                            <span class="text-xs font-bold text-purple-500 uppercase">Misterios ${tipo}</span>
+                            <h3 class="font-bold text-base mt-0.5">${nombreMisterio}</h3>
+                        </div>
+                        <button onclick="mostrarMisterioRosario('${tipo}')" class="text-xs px-2.5 py-1 bg-zinc-200 dark:bg-zinc-700 rounded-lg font-medium">Volver</button>
+                    </div>
+
+                    <div class="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-inner">
+                        ${contenidoPaso}
+                    </div>
+
+                    <div class="pt-2">
+                        ${botonAccion}
+                    </div>
+                </div>
+            `;
+        }
+
+        function avanzarPasoRosario(nuevoPaso) {
+            rosarioActual.pasoActual = nuevoPaso;
+            renderizarPantallaRezo();
+        }
+
+        function restarAveMaria() {
+            if (rosarioActual.cuentaAveMarias > 1) {
+                rosarioActual.cuentaAveMarias--;
+                renderizarPantallaRezo();
+            } else {
+                rosarioActual.cuentaAveMarias = 0;
+                rosarioActual.pasoActual = 'gloria';
+                renderizarPantallaRezo();
+            }
+        }
+
+        function finalizarDecena() {
+            alert("🌟 ¡Decena completada con éxito! Que Dios bendiga tu oración.");
+            mostrarMisterioRosario(rosarioActual.tipo);
         }
 
         async function obtenerListaOraciones() {
