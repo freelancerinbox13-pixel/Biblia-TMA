@@ -212,9 +212,10 @@
             } catch (err) {}
         }
 
-        // --- SECCIÓN DE ORACIÓN Y ROSARIO CON AUDIOS DE SUPABASE ---
+        // --- SECCIÓN DE ORACIÓN, PETICIONES Y ROSARIO INTERACTIVO ---
         async function cargarOraciones() {
             currentView = 'prayer'; backBtn.classList.add('hidden'); mainTitle.innerText = "🙏 Oración y Rosario"; mainSubtitle.innerText = "Espacio devocional y guía espiritual"; mainSubtitle.style.display = 'block';
+
             contentBox.innerHTML = `
                 <div class="space-y-3">
                     <div class="grid grid-cols-2 gap-2">
@@ -225,12 +226,20 @@
                             <div class="text-2xl mb-1">📿</div><div class="font-bold text-sm text-purple-600 dark:text-purple-400">Santo Rosario</div><div class="text-[11px] opacity-70">Rezo guiado diario</div>
                         </div>
                     </div>
+
+                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 mt-4">
+                        <h3 class="font-bold text-sm mb-1">💬 Peticiones de la Comunidad</h3>
+                        <textarea id="prayerInput" placeholder="Escribe tu petición de oración..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
+                        <button onclick="enviarOracion()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition">Compartir Petición</button>
+                    </div>
+                    <div id="prayer-list" class="space-y-2"><div class="text-center py-6 opacity-65">Cargando peticiones...</div></div>
                 </div>
             `;
+            obtenerListaOraciones();
         }
 
         async function cargarMenuCategoriasOraciones() {
-            currentView = 'prayer_categories'; backBtn.classList.add('hidden'); mainTitle.innerText = "📖 Categorías de Oración"; mainSubtitle.innerText = "Selecciona un propósito";
+            currentView = 'prayer_categories'; backBtn.classList.remove('hidden'); mainTitle.innerText = "📖 Categorías de Oración"; mainSubtitle.innerText = "Selecciona un propósito";
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando oraciones...</div>';
             try {
                 const { data: categories } = await supabaseClient.from('prayer_categories').select('*').order('id');
@@ -275,7 +284,7 @@
         };
 
         function cargarRosarioGuiado() {
-            currentView = 'rosary'; backBtn.classList.add('hidden'); mainTitle.innerText = "📿 Santo Rosario"; mainSubtitle.innerText = "Meditación de los Misterios"; mainSubtitle.style.display = 'block';
+            currentView = 'rosary'; backBtn.classList.remove('hidden'); mainTitle.innerText = "📿 Santo Rosario"; mainSubtitle.innerText = "Meditación de los Misterios"; mainSubtitle.style.display = 'block';
             contentBox.innerHTML = `
                 <div class="space-y-2">
                     <div onclick="mostrarMisterioRosario('Gozosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition"><div><span class="font-bold text-base">Misterios Gozosos</span><p class="text-xs opacity-70">Lunes y Sábado</p></div><span class="opacity-40 text-lg">›</span></div>
@@ -287,7 +296,7 @@
         }
 
         function mostrarMisterioRosario(tipo) {
-            currentView = 'rosary_detail'; backBtn.classList.add('hidden'); mainTitle.innerText = `Misterios ${tipo}`; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Selecciona una decena";
+            currentView = 'rosary_detail'; backBtn.classList.remove('hidden'); mainTitle.innerText = `Misterios ${tipo}`; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Selecciona una decena";
             const misterios = listaMisteriosData[tipo];
             contentBox.innerHTML = `<div class="space-y-3">${misterios.map((m, idx) => `<div onclick="iniciarRezoMisterio('${tipo}', ${idx})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition shadow-sm"><div><span class="font-bold text-purple-600 dark:text-purple-400 text-xs">Decena ${idx + 1}</span><p class="font-medium text-sm mt-0.5">${m}</p></div><span class="text-xs bg-purple-500/20 text-purple-600 dark:text-purple-400 px-2.5 py-1 rounded-lg font-semibold">Rezar ›</span></div>`).join('')}</div>`;
         }
@@ -340,6 +349,38 @@
         }
         function finalizarDecena() { alert("🌟 ¡Decena completada con éxito!"); mostrarMisterioRosario(rosarioActual.tipo); }
 
+        async function obtenerListaOraciones() {
+            const listContainer = document.getElementById('prayer-list');
+            try {
+                const { data } = await supabaseClient.from('prayer_requests').select('*').order('created_at', { ascending: false }).limit(20);
+                if (!data || data.length === 0) { listContainer.innerHTML = '<p class="text-center opacity-60 py-4">No hay peticiones aún.</p>'; return; }
+                listContainer.innerHTML = data.map(p => `
+                    <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm flex justify-between items-start gap-2">
+                        <p class="opacity-90 flex-1">${p.request_text}</p>
+                        ${p.telegram_id == currentTelegramId ? `<button onclick="eliminarOracion(${p.id})" class="text-xs text-red-500 hover:underline shrink-0">Borrar</button>` : ''}
+                    </div>
+                `).join('');
+            } catch (err) {}
+        }
+
+        async function enviarOracion() {
+            const text = document.getElementById('prayerInput').value.trim();
+            if (!text) return;
+            try {
+                await supabaseClient.from('prayer_requests').insert([{ telegram_id: currentTelegramId, request_text: text, is_public: true }]);
+                document.getElementById('prayerInput').value = '';
+                alert("🙏 Petición compartida.");
+                obtenerListaOraciones();
+            } catch (err) {}
+        }
+
+        async function eliminarOracion(id) {
+            try {
+                await supabaseClient.from('prayer_requests').delete().eq('id', id).eq('telegram_id', currentTelegramId);
+                obtenerListaOraciones();
+            } catch (err) {}
+        }
+
         async function cargarTrivia() {
             currentView = 'trivia'; backBtn.classList.add('hidden'); mainTitle.innerText = "❓ Trivia Bíblica"; mainSubtitle.style.display = 'block';
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando trivia...</div>';
@@ -348,8 +389,8 @@
         function volverAtras() {
             if (currentView === 'verses') seleccionarLibro(selectedBook.id, selectedBook.name);
             else if (currentView === 'chapters') isApocryphaMode ? cargarApocrifos() : cargarLibros();
-            else if (currentView === 'prayer_categories' || currentView === 'rosary' || currentView === 'rosary_detail') cargarOraciones();
-            else if (currentView === 'prayer_detail') cargarMenuCategoriasOraciones();
+            else if (currentView === 'prayer_categories' || currentView === 'rosary' || currentView === 'prayer_detail') cargarOraciones();
+            else if (currentView === 'rosary_detail') cargarRosarioGuiado();
         }
 
         cargarLibros();
