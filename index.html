@@ -65,7 +65,7 @@
             <div class="w-12"></div>
         </header>
 
-        <!-- BARRA DE NAVEGACIÓN RÁPIDA (ACTUALIZADA CON APÓCRIFOS) -->
+        <!-- BARRA DE NAVEGACIÓN RÁPIDA -->
         <nav class="grid grid-cols-7 gap-1 mb-5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-center text-xs font-medium">
             <button onclick="cargarLibros()" class="py-2 rounded-lg bg-zinc-200 dark:bg-zinc-700 transition">📖 Biblia</button>
             <button onclick="cargarApocrifos()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">📜 Apócrifos</button>
@@ -96,7 +96,7 @@
         let selectedBook = null;
         let selectedPlan = null;
         let allPlansCache = [];
-        let isApocryphaMode = false; // Bandera para diferenciar entre Biblia y Apócrifos
+        let isApocryphaMode = false;
         
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
         let currentTelegramId = tgUser?.id || 123456789;
@@ -740,23 +740,203 @@
             }
         }
 
+        // --- NUEVA SECCIÓN DE ORACIÓN Y ROSARIO ---
         async function cargarOraciones() {
             currentView = 'prayer';
             backBtn.classList.add('hidden');
-            mainTitle.innerText = "🙏 Peticiones de Oración";
-            mainSubtitle.innerText = "Comunidad de intercesión";
+            mainTitle.innerText = "🙏 Oración y Rosario";
+            mainSubtitle.innerText = "Espacio devocional y guía espiritual";
             mainSubtitle.style.display = 'block';
 
             contentBox.innerHTML = `
-                <div class="space-y-4">
-                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2">
-                        <textarea id="prayerInput" placeholder="Escribe tu petición de oración..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
-                        <button onclick="enviarOracion()" class="w-full py-2.5 bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-lg font-semibold text-sm">Compartir Petición</button>
+                <div class="space-y-3">
+                    <!-- Menú de opciones devocionales -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div onclick="cargarMenuCategoriasOraciones()" class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center cursor-pointer active:scale-98 transition shadow-sm">
+                            <div class="text-2xl mb-1">📖</div>
+                            <div class="font-bold text-sm text-amber-600 dark:text-amber-400">Oraciones</div>
+                            <div class="text-[11px] opacity-70">Por categorías</div>
+                        </div>
+                        <div onclick="cargarRosarioGuiado()" class="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30 text-center cursor-pointer active:scale-98 transition shadow-sm">
+                            <div class="text-2xl mb-1">📿</div>
+                            <div class="font-bold text-sm text-purple-600 dark:text-purple-400">Santo Rosario</div>
+                            <div class="text-[11px] opacity-70">Rezo guiado diario</div>
+                        </div>
                     </div>
-                    <div id="prayer-list" class="space-y-2"><div class="text-center py-6 opacity-65">Cargando...</div></div>
+
+                    <!-- Muro de peticiones de la comunidad -->
+                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 mt-4">
+                        <h3 class="font-bold text-sm mb-1">💬 Peticiones de la Comunidad</h3>
+                        <textarea id="prayerInput" placeholder="Escribe tu petición de oración..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
+                        <button onclick="enviarOracion()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition">Compartir Petición</button>
+                    </div>
+                    <div id="prayer-list" class="space-y-2"><div class="text-center py-6 opacity-65">Cargando peticiones...</div></div>
                 </div>
             `;
             obtenerListaOraciones();
+        }
+
+        async function cargarMenuCategoriasOraciones() {
+            currentView = 'prayer_categories';
+            backBtn.classList.remove('hidden');
+            mainTitle.innerText = "📖 Categorías de Oración";
+            mainSubtitle.innerText = "Selecciona un propósito";
+
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando oraciones...</div>';
+
+            try {
+                const { data: categories, error: catError } = await supabaseClient.from('prayer_categories').select('*').order('id');
+                const { data: prayers, error: prayError } = await supabaseClient.from('prayers').select('*');
+                if (catError || prayError) throw (catError || prayError);
+
+                if (!categories || categories.length === 0) {
+                    contentBox.innerHTML = '<p class="text-center opacity-60 py-5">No hay categorías cargadas.</p>';
+                    return;
+                }
+
+                contentBox.innerHTML = categories.map(cat => {
+                    const prayersInCat = prayers.filter(p => p.category_id === cat.id);
+                    return `
+                        <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm">
+                            <h3 class="font-bold text-base text-amber-600 dark:text-amber-400">${cat.name}</h3>
+                            <p class="text-xs opacity-70">${cat.description || ''}</p>
+                            <div class="space-y-1 mt-2">
+                                ${prayersInCat.length > 0 ? prayersInCat.map(p => `
+                                    <div onclick="verDetalleOracion('${p.title.replace(/'/g, "\\'")}', '${p.content.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')" class="p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-semibold flex justify-between items-center cursor-pointer active:scale-98 transition">
+                                        <span>${p.title}</span>
+                                        <span class="opacity-40">›</span>
+                                    </div>
+                                `).join('') : '<p class="text-xs opacity-50 italic">Próximamente más oraciones...</p>'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error(err);
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar las categorías de oración.</p>';
+            }
+        }
+
+        function verDetalleOracion(title, content) {
+            currentView = 'prayer_detail';
+            backBtn.classList.remove('hidden');
+            mainTitle.innerText = title;
+            mainSubtitle.style.display = 'none';
+
+            const formattedContent = content.replace(/\\n/g, '<br>');
+
+            contentBox.innerHTML = `
+                <div class="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 shadow-sm space-y-4">
+                    <div class="text-sm leading-relaxed whitespace-pre-line opacity-95">${formattedContent}</div>
+                </div>
+            `;
+        }
+
+        function cargarRosarioGuiado() {
+            currentView = 'rosary';
+            backBtn.classList.remove('hidden');
+            mainTitle.innerText = "📿 Santo Rosario";
+            mainSubtitle.innerText = "Meditación de los Misterios";
+
+            const dayOfWeek = new Date().getDay(); // 0: Dom, 1: Lun, ...
+            let misteriosSugeridos = "Misterios Gozosos";
+            let tipoMisterio = "gozoso";
+            if (dayOfWeek === 1 || dayOfWeek === 6) { misteriosSugeridos = "Misterios Gozosos (Lunes y Sábado)"; tipoMisterio = "gozoso"; }
+            else if (dayOfWeek === 2 || dayOfWeek === 5) { misteriosSugeridos = "Misterios Dolorosos (Martes y Viernes)"; tipoMisterio = "doloroso"; }
+            else if (dayOfWeek === 3 || dayOfWeek === 0) { misteriosSugeridos = "Misterios Gloriosos (Miércoles y Domingo)"; tipoMisterio = "glorioso"; }
+            else if (dayOfWeek === 4) { misteriosSugeridos = "Misterios Luminosos (Jueves)"; tipoMisterio = "luminoso"; }
+
+            contentBox.innerHTML = `
+                <div class="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30 text-center space-y-1 mb-3">
+                    <div class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Sugerencia para hoy</div>
+                    <div class="font-extrabold text-base">${misteriosSugeridos}</div>
+                </div>
+                <div class="space-y-2">
+                    <div onclick="mostrarMisterioRosario('Gozosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition">
+                        <div>
+                            <span class="font-bold text-base">Misterios Gozosos</span>
+                            <p class="text-xs opacity-70">Lunes y Sábado</p>
+                        </div>
+                        <span class="opacity-40 text-lg">›</span>
+                    </div>
+                    <div onclick="mostrarMisterioRosario('Luminosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition">
+                        <div>
+                            <span class="font-bold text-base">Misterios Luminosos</span>
+                            <p class="text-xs opacity-70">Jueves</p>
+                        </div>
+                        <span class="opacity-40 text-lg">›</span>
+                    </div>
+                    <div onclick="mostrarMisterioRosario('Dolorosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition">
+                        <div>
+                            <span class="font-bold text-base">Misterios Dolorosos</span>
+                            <p class="text-xs opacity-70">Martes y Viernes</p>
+                        </div>
+                        <span class="opacity-40 text-lg">›</span>
+                    </div>
+                    <div onclick="mostrarMisterioRosario('Gloriosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer active:scale-98 transition">
+                        <div>
+                            <span class="font-bold text-base">Misterios Gloriosos</span>
+                            <p class="text-xs opacity-70">Miércoles y Domingo</p>
+                        </div>
+                        <span class="opacity-40 text-lg">›</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function mostrarMisterioRosario(tipo) {
+            currentView = 'rosary_detail';
+            backBtn.classList.remove('hidden');
+            mainTitle.innerText = `Misterios ${tipo}`;
+            mainSubtitle.style.display = 'none';
+
+            let misteriosList = [];
+            if (tipo === 'Gozosos') {
+                misteriosList = [
+                    "1. La encarnación del Hijo de Dios.",
+                    "2. La visitación de Nuestra Señora a su prima Santa Isabel.",
+                    "3. El nacimiento del Hijo de Dios en Belén.",
+                    "4. La presentación del Niño Jesús en el templo.",
+                    "5. El Niño Jesús perdido y hallado en el templo."
+                ];
+            } else if (tipo === 'Luminosos') {
+                misteriosList = [
+                    "1. El bautismo de Jesús en el río Jordán.",
+                    "2. La autorrevelación de Jesús en las bodas de Caná.",
+                    "3. El anuncio del Reino de Dios y la invitación a la conversión.",
+                    "4. La transfiguración de Jesús en el monte Tabor.",
+                    "5. La institución de la Eucaristía, expresión sacramental del misterio pascual."
+                ];
+            } else if (tipo === 'Dolorosos') {
+                misteriosList = [
+                    "1. La oración de Jesús en el huerto de Getsemaní.",
+                    "2. La flagelación de nuestro Señor Jesucristo.",
+                    "3. La coronación de espinas.",
+                    "4. Jesús con la cruz a cuestas camino al Calvario.",
+                    "5. La crucifixión y muerte de Jesús."
+                ];
+            } else if (tipo === 'Gloriosos') {
+                misteriosList = [
+                    "1. La resurrección del Hijo de Dios.",
+                    "2. La ascensión de Jesús al cielo.",
+                    "3. La venida del Espíritu Santo sobre la Virgen María y los apóstoles.",
+                    "4. La asunción de los cielos de la Virgen María.",
+                    "5. La coronación de la Santísima Virgen como Reina y Madre de todo lo creado."
+                ];
+            }
+
+            contentBox.innerHTML = `
+                <div class="space-y-3">
+                    <p class="text-xs opacity-70 text-center mb-2">Medita cada decena en su respectivo misterio:</p>
+                    ${misteriosList.map((m, idx) => `
+                        <div class="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-sm space-y-1 shadow-sm">
+                            <span class="font-bold text-purple-600 dark:text-purple-400 text-xs">Decena ${idx + 1}</span>
+                            <p class="font-medium">${m}</p>
+                            <p class="text-xs opacity-60 pt-1">1 Padre Nuestro, 10 Ave Marías, 1 Gloria y Oración de Fátima</p>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
 
         async function obtenerListaOraciones() {
@@ -775,7 +955,7 @@
                     </div>
                 `).join('');
             } catch (err) {
-                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al cargar oraciones.</p>';
+                listContainer.innerHTML = '<p class="text-center text-red-500 text-xs">Error al cargar peticiones.</p>';
             }
         }
 
@@ -991,6 +1171,8 @@
                 }
             } else if (currentView === 'plan_detail' || currentView === 'create_plan') {
                 cargarPlanes();
+            } else if (currentView === 'prayer_categories' || currentView === 'rosary' || currentView === 'prayer_detail' || currentView === 'rosary_detail') {
+                cargarOraciones();
             }
         }
 
