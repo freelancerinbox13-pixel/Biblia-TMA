@@ -265,16 +265,26 @@
             } catch (err) {}
         }
 
-        // --- PLANES DE LECTURA RESTAURADOS (CON CREACIÓN, FECHA/HORA Y ENTRAR/SALIR) ---
+        // --- PLANES DE LECTURA (CON FECHAS, HORAS, ENTRAR Y SALIR) ---
         async function cargarPlanes() {
             currentView = 'plans'; backBtn.classList.add('hidden'); mainTitle.innerText = "📅 Planes de Lectura"; mainSubtitle.innerText = "Devocionales"; mainSubtitle.style.display = 'block';
             contentBox.innerHTML = `
                 <div class="space-y-3">
-                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm">
+                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2.5 shadow-sm">
                         <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Crear Nuevo Plan Devocional</h3>
                         <input type="text" id="newPlanTitle" placeholder="Título del plan..." class="w-full p-2.5 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs">
                         <textarea id="newPlanDesc" placeholder="Descripción y objetivos..." class="w-full p-2.5 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs resize-none h-16"></textarea>
-                        <button onclick="crearPlanDevocional()" class="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs transition">Guardar Plan</button>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[10px] opacity-70 block mb-1">Inicio (Fecha y Hora)</label>
+                                <input type="datetime-local" id="newPlanStart" class="w-full p-2 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs">
+                            </div>
+                            <div>
+                                <label class="text-[10px] opacity-70 block mb-1">Fin (Fecha y Hora)</label>
+                                <input type="datetime-local" id="newPlanEnd" class="w-full p-2 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs">
+                            </div>
+                        </div>
+                        <button onclick="crearPlanDevocional()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs transition shadow">Guardar Plan</button>
                     </div>
                     <div id="plans-list" class="space-y-2"><div class="text-center py-6 opacity-65">Cargando planes...</div></div>
                 </div>
@@ -289,13 +299,17 @@
                 allPlansCache = data || [];
                 if (allPlansCache.length === 0) { listContainer.innerHTML = '<p class="text-center opacity-60 py-4">No hay planes creados aún.</p>'; return; }
                 listContainer.innerHTML = allPlansCache.map(plan => {
-                    const fechaFormateada = plan.created_at ? new Date(plan.created_at).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+                    const inicio = plan.start_time ? new Date(plan.start_time).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) : 'No definida';
+                    const fin = plan.end_time ? new Date(plan.end_time).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) : 'No definida';
                     return `
-                        <div onclick="abrirPlan(${plan.id})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition flex justify-between items-center">
+                        <div onclick="abrirPlan(${plan.id})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1.5 shadow-sm cursor-pointer active:scale-98 transition flex justify-between items-center">
                             <div>
                                 <h3 class="font-bold text-base text-amber-600 dark:text-amber-400">${plan.title}</h3>
                                 <p class="text-xs opacity-75">${plan.description || ''}</p>
-                                ${fechaFormateada ? `<span class="text-[10px] opacity-50 block mt-1">📅 ${fechaFormateada}</span>` : ''}
+                                <div class="text-[10px] opacity-60 mt-1 flex gap-3">
+                                    <span>🚀 Inicio: ${inicio}</span>
+                                    <span>🏁 Fin: ${fin}</span>
+                                </div>
                             </div>
                             <span class="opacity-40 text-lg">›</span>
                         </div>
@@ -307,13 +321,13 @@
         async function crearPlanDevocional() {
             const title = document.getElementById('newPlanTitle').value.trim();
             const description = document.getElementById('newPlanDesc').value.trim();
+            const start_time = document.getElementById('newPlanStart').value;
+            const end_time = document.getElementById('newPlanEnd').value;
             if (!title) { alert("Escribe un título para el plan."); return; }
             try {
-                await supabaseClient.from('reading_plans').insert([{ title, description, created_at: new Date() }]);
-                document.getElementById('newPlanTitle').value = '';
-                document.getElementById('newPlanDesc').value = '';
+                await supabaseClient.from('reading_plans').insert([{ title, description, start_time, end_time, created_at: new Date() }]);
                 alert("📅 Plan devocional creado con éxito.");
-                obtenerListaPlanes();
+                cargarPlanes();
             } catch (err) { alert("Error al crear el plan."); }
         }
 
@@ -322,24 +336,28 @@
             if (!selectedPlan) return;
             currentView = 'plan_detail'; backBtn.classList.remove('hidden');
             mainTitle.innerText = selectedPlan.title; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Detalle del plan devocional";
-            const fechaFormateada = selectedPlan.created_at ? new Date(selectedPlan.created_at).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+            const inicio = selectedPlan.start_time ? new Date(selectedPlan.start_time).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }) : 'No definida';
+            const fin = selectedPlan.end_time ? new Date(selectedPlan.end_time).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }) : 'No definida';
             contentBox.innerHTML = `
                 <div class="space-y-4">
                     <div class="p-5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-3">
                         <h3 class="font-bold text-base text-amber-600 dark:text-amber-400">${selectedPlan.title}</h3>
                         <p class="text-sm opacity-90 leading-relaxed">${selectedPlan.description || 'Sin descripción adicional.'}</p>
-                        ${fechaFormateada ? `<p class="text-xs opacity-50 pt-2 border-t border-zinc-200 dark:border-zinc-700">Creado el: ${fechaFormateada}</p>` : ''}
+                        <div class="text-xs opacity-70 pt-2 border-t border-zinc-200 dark:border-zinc-700 space-y-1">
+                            <div>🚀 <strong>Inicio:</strong> ${inicio}</div>
+                            <div>🏁 <strong>Finalización:</strong> ${fin}</div>
+                        </div>
                     </div>
                     <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center space-y-2">
                         <h4 class="font-bold text-amber-600 dark:text-amber-400 text-sm">📖 Guía de Lectura</h4>
                         <p class="text-xs opacity-80">Sigue este devocional diario para fortalecer tu espíritu y mantenerte constante en la palabra.</p>
                     </div>
-                    <button onclick="cargarPlanes()" class="w-full py-3 bg-zinc-200 dark:bg-zinc-800 rounded-xl font-bold text-xs transition">← Salir del Plan</button>
+                    <button onclick="cargarPlanes()" class="w-full py-3 bg-zinc-200 dark:bg-zinc-800 rounded-xl font-bold text-xs transition shadow">← Salir del Plan</button>
                 </div>
             `;
         }
 
-        // --- ORACIÓN Y ROSARIO GUIADO 100% COMPLETO (CON OPCIONAL INICIAL Y VUELTA AL MENÚ) ---
+        // --- ORACIÓN Y ROSARIO GUIADO ---
         async function cargarOraciones() {
             currentView = 'prayer'; backBtn.classList.add('hidden'); mainTitle.innerText = "🙏 Oración y Rosario"; mainSubtitle.innerText = "Espacio devocional y guía espiritual"; mainSubtitle.style.display = 'block';
 
@@ -396,7 +414,7 @@
             contentBox.innerHTML = `<div class="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 shadow-sm space-y-4"><div class="text-sm leading-relaxed whitespace-pre-line opacity-95">${formattedContent}</div>${audioHTML}</div>`;
         }
 
-        // --- ROSARIO GUIADO 100% COMPLETO (INCLUYENDO PROTOCOLO OPCIONAL INICIAL Y VUELTA) ---
+        // --- ROSARIO GUIADO (BOTÓN EMPEZAR ADAPTADO) ---
         let rosarioActual = { tipo: '', misterioIndex: 0, pasoActual: 'padrenuestro', cuentaAveMarias: 10 };
         const listaMisteriosData = {
             'Gozosos': [
@@ -458,9 +476,13 @@
             mainTitle.innerText = `Misterios ${tipo}`; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Protocolo del Santo Rosario";
             contentBox.innerHTML = `
                 <div class="space-y-3">
-                    <div onclick="iniciarRezoMisterio('${tipo}', 0, true)" class="p-4 rounded-xl bg-purple-600 text-white flex justify-between items-center cursor-pointer shadow-md">
-                        <div><span class="text-[10px] uppercase font-extrabold bg-purple-800 px-2 py-0.5 rounded text-purple-200">Rezo Litúrgico Opcional</span><p class="font-bold text-sm mt-1">🙏 Iniciar con Protocolo Inicial (Cruz, Credo...)</p></div>
-                        <span class="text-xs bg-white text-purple-700 px-3 py-1.5 rounded-lg font-bold">Empezar ›</span>
+                    <!-- BOTÓN ADAPTADO PARA EVITAR SOLAPAMIENTO -->
+                    <div class="p-4 rounded-xl bg-purple-600 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-md">
+                        <div class="pr-2">
+                            <span class="text-[10px] uppercase font-extrabold bg-purple-800 px-2 py-0.5 rounded text-purple-200">Rezo Litúrgico Opcional</span>
+                            <p class="font-bold text-xs sm:text-sm mt-1">🙏 Protocolo Inicial (Cruz, Credo...)</p>
+                        </div>
+                        <button onclick="iniciarRezoMisterio('${tipo}', 0, true)" class="w-full sm:w-auto text-center text-xs bg-white text-purple-700 px-4 py-2 rounded-lg font-bold shadow-sm active:scale-95 transition">Empezar ›</button>
                     </div>
 
                     <div class="text-xs opacity-50 text-center uppercase tracking-widest pt-2 pb-1">O ir directamente a una decena</div>
