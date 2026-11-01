@@ -42,13 +42,13 @@
         </header>
 
         <nav class="grid grid-cols-7 gap-1 mb-5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-center text-xs font-medium">
-            <button onclick="cargarLibros()" class="py-2 rounded-lg bg-zinc-200 dark:bg-zinc-700 transition">📖 Biblia</button>
-            <button onclick="cargarApocrifos()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">📜 Apócrifos</button>
-            <button onclick="abrirBuscador()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">🔍 Buscar</button>
-            <button onclick="cargarFavoritos()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">⭐ Favoritos</button>
-            <button onclick="cargarPlanes()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">📅 Planes</button>
-            <button onclick="cargarOraciones()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">🙏 Oración</button>
-            <button onclick="cargarTrivia()" class="py-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">❓ Trivia</button>
+            <button onclick="cargarLibros()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">📖 Biblia</button>
+            <button onclick="cargarApocrifos()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">📜 Apócrifos</button>
+            <button onclick="abrirBuscador()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">🔍 Buscar</button>
+            <button onclick="cargarFavoritos()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">⭐ Favoritos</button>
+            <button onclick="cargarPlanes()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">📅 Planes</button>
+            <button onclick="cargarOraciones()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">🙏 Oración</button>
+            <button onclick="cargarTrivia()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">❓ Trivia</button>
         </nav>
 
         <div id="content-box" class="space-y-3">
@@ -535,7 +535,7 @@
             backBtn.classList.add('hidden'); 
             mainTitle.innerText = "❓ Trivia Bíblica"; 
             mainSubtitle.style.display = 'block';
-            mainSubtitle.innerText = "Pon a prueba tus conocimientos"; // <--- Subtítulo corregido aquí
+            mainSubtitle.innerText = "Pon a prueba tus conocimientos";
             
             contentBox.innerHTML = `
                 <div class="grid grid-cols-2 gap-2 mb-4">
