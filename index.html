@@ -13,17 +13,17 @@
             0% { transform: translate(0, 0) scale(0.2) rotate(0deg); opacity: 1; }
             100% { transform: translate(var(--dx), var(--dy)) scale(var(--scale)) rotate(720deg); opacity: 0; }
         }
-        .burst-particle { position: absolute; top: 50%; left: 50%; animation: burstStar 1.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; pointer-events: none; }
+        .burst-particle { position: absolute; top: 50%; left: 50%; animation: burstStar 2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; pointer-events: none; z-index: 60; }
 
         @keyframes fadeInOut {
             0% { opacity: 0; transform: scale(0.5); }
-            20% { opacity: 1; transform: scale(1.1); }
-            40% { transform: scale(1); }
+            20% { opacity: 1; transform: scale(1.05); }
+            35% { transform: scale(1); }
             80% { opacity: 1; transform: scale(1); }
-            100% { opacity: 0; transform: scale(1.2); }
+            100% { opacity: 0; transform: scale(1.1); }
         }
         .congrats-banner {
-            animation: fadeInOut 3s ease-in-out forwards;
+            animation: fadeInOut 3.5s ease-in-out forwards;
         }
     </style>
 </head>
@@ -117,43 +117,57 @@
         function toggleMenuDesplegable() { dropdownMenu.classList.toggle('hidden'); }
         function seleccionarOpcionMenu(funcionCarga) { dropdownMenu.classList.add('hidden'); funcionCarga(); }
 
-        function dispararExplosionEstrellas(cantidad = 22) {
+        function dispararExplosionEstrellas(cantidad = 200) {
             const overlay = document.getElementById('explosion-overlay');
             if (!overlay) return;
             overlay.innerHTML = '';
             overlay.classList.remove('hidden');
+            
+            const simbolos = ['⭐', '🌟', '✨', '💫', '✦'];
+            
             for (let i = 0; i < cantidad; i++) {
                 const particle = document.createElement('div');
-                particle.className = 'burst-particle text-amber-400 font-bold';
-                const randomSize = Math.floor(Math.random() * 3) + 1;
-                particle.innerHTML = randomSize === 1 ? '✨' : (randomSize === 2 ? '⭐' : '🌟');
-                particle.style.fontSize = `${Math.floor(Math.random() * 16) + 12}px`;
+                particle.className = 'burst-particle font-bold';
+                particle.innerHTML = simbolos[Math.floor(Math.random() * simbolos.length)];
+                particle.style.fontSize = `${Math.floor(Math.random() * 22) + 10}px`;
+                
                 const angle = Math.random() * Math.PI * 2;
-                const distance = 100 + Math.random() * 260;
+                const distance = 50 + Math.random() * 380;
                 particle.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
                 particle.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
-                particle.style.setProperty('--scale', 0.5 + Math.random() * 2.0);
+                particle.style.setProperty('--scale', 0.6 + Math.random() * 2.2);
+                
                 overlay.appendChild(particle);
             }
-            setTimeout(() => { overlay.innerHTML = ''; overlay.classList.add('hidden'); }, 1800);
         }
 
         function mostrarFelicidadesDiosTeBendice() {
-            dispararExplosionEstrellas(200);
             const overlay = document.getElementById('explosion-overlay');
             if (!overlay) return;
             
+            overlay.innerHTML = '';
+            overlay.classList.remove('hidden');
+            
+            // 1. Lanzar las 200 estrellas
+            dispararExplosionEstrellas(200);
+
+            // 2. Crear el banner central con el texto exacto
             const banner = document.createElement('div');
-            banner.className = 'congrats-banner fixed inset-0 z-50 flex flex-col items-center justify-center p-6 text-center pointer-events-none bg-black/60 backdrop-blur-sm';
+            banner.className = 'congrats-banner fixed inset-0 z-[70] flex flex-col items-center justify-center p-6 text-center pointer-events-none bg-black/70 backdrop-blur-md';
             banner.innerHTML = `
-                <div class="bg-gradient-to-br from-amber-500 to-amber-700 text-white p-8 rounded-3xl shadow-2xl border-4 border-amber-300 max-w-sm w-full space-y-3">
-                    <div class="text-4xl animate-bounce">✨🙏✨</div>
-                    <h2 class="text-2xl font-black tracking-wide text-amber-100">¡Felicidades, Dios te bendice!!</h2>
-                    <p class="text-xs text-amber-200 font-medium">¡Has completado la trivia con éxito perfecto!</p>
+                <div class="bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-600 text-white p-8 rounded-3xl shadow-2xl border-4 border-amber-200 max-w-xs w-full space-y-4">
+                    <div class="text-5xl animate-bounce">✨🙏✨</div>
+                    <h2 class="text-2xl font-black tracking-wide text-amber-100 leading-snug">¡Felicidades, Dios te bendice!!</h2>
+                    <p class="text-xs text-amber-100 opacity-90 font-medium">¡Has completado todas las preguntas correctamente!</p>
                 </div>
             `;
             overlay.appendChild(banner);
-            setTimeout(() => { banner.remove(); }, 3000);
+
+            // 3. Limpiar después de que termine la animación
+            setTimeout(() => {
+                overlay.innerHTML = '';
+                overlay.classList.add('hidden');
+            }, 3500);
         }
 
         // --- BIBLIOTECA ---
@@ -696,10 +710,10 @@
             cerrarPrevisualizacion();
             if (adController) {
                 adController.show()
-                    .then(() => { dispararExplosionEstrellas(); alert("🎉 ¡Anuncio completado! Abriendo estampita..."); window.open(imageUrl, '_blank'); })
+                    .then(() => { dispararExplosionEstrellas(30); alert("🎉 ¡Anuncio completado! Abriendo estampita..."); window.open(imageUrl, '_blank'); })
                     .catch(() => { alert("ℹ️ Debes ver el anuncio completo para desbloquear."); });
             } else {
-                dispararExplosionEstrellas();
+                dispararExplosionEstrellas(30);
                 alert("🎁 [Modo Demo] Anuncio simulado. Descargando estampita...");
                 window.open(imageUrl, '_blank');
             }
@@ -709,10 +723,10 @@
         function mostrarAnuncioRecompensado() {
             if (adController) {
                 adController.show()
-                    .then(() => { userStats.stars += 10; guardarStats(); dispararExplosionEstrellas(); document.getElementById('global-stars-display').innerText = userStats.stars; alert("🎉 ¡Ganaste +10 Estrellas ⭐!"); })
+                    .then(() => { userStats.stars += 10; guardarStats(); dispararExplosionEstrellas(30); document.getElementById('global-stars-display').innerText = userStats.stars; alert("🎉 ¡Ganaste +10 Estrellas ⭐!"); })
                     .catch(() => { alert("ℹ️ Debes ver el anuncio completo."); });
             } else {
-                userStats.stars += 10; guardarStats(); dispararExplosionEstrellas();
+                userStats.stars += 10; guardarStats(); dispararExplosionEstrellas(30);
                 if(document.getElementById('global-stars-display')) document.getElementById('global-stars-display').innerText = userStats.stars;
                 alert("🎁 [Modo Demo] +10 Estrellas ⭐ añadidas.");
             }
@@ -791,7 +805,7 @@
                     } else {
                         alert(`🏁 ¡Partida finalizada! Acertaste ${partidaActual.aciertos} de 5.`);
                     }
-                    setTimeout(() => { cargarTrivia(); }, partidaActual.aciertos === 5 ? 2500 : 300);
+                    setTimeout(() => { cargarTrivia(); }, partidaActual.aciertos === 5 ? 3500 : 400);
                 }, 800);
             }
         }
