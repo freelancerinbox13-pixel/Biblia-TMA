@@ -32,26 +32,56 @@
     <div id="explosion-overlay" class="hidden"></div>
 
     <div class="max-w-md mx-auto">
-        <header class="mb-4 flex items-center justify-between">
-            <button id="back-btn" onclick="volverAtras()" class="hidden px-3 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-sm font-medium active:scale-95 transition">← Volver</button>
+        <!-- CABECERA LIMPIA CON BOTÓN DE MENÚ INTUITIVO -->
+        <header class="mb-4 flex items-center justify-between relative">
+            <button id="back-btn" onclick="volverAtras()" class="hidden px-3 py-2 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-sm font-semibold active:scale-95 transition">← Volver</button>
+            
             <div class="text-center flex-1">
                 <h1 id="main-title" class="text-2xl font-bold">📖 Biblia TMA</h1>
                 <p id="main-subtitle" class="text-sm opacity-70">Tu espacio de lectura en Telegram</p>
             </div>
-            <div class="w-12"></div>
+
+            <!-- Botón de Menú Desplegable (Hamburguesa) -->
+            <button onclick="toggleMenuDesplegable()" class="p-2.5 rounded-xl bg-amber-600 text-white font-bold text-lg shadow-md active:scale-95 transition flex items-center gap-1.5">
+                <span>☰</span>
+                <span class="text-xs pr-1 hidden sm:inline">Menú</span>
+            </button>
         </header>
 
-        <!-- NAVEGACIÓN PRINCIPAL AMPLIADA CON ESTAMPITAS -->
-        <nav class="grid grid-cols-8 gap-1 mb-5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-center text-[10px] font-medium">
-            <button onclick="cargarLibros()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">📖 Biblia</button>
-            <button onclick="cargarApocrifos()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">📜 Apócrifos</button>
-            <button onclick="abrirBuscador()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">🔍 Buscar</button>
-            <button onclick="cargarFavoritos()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">⭐ Favoritos</button>
-            <button onclick="cargarPlanes()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">📅 Planes</button>
-            <button onclick="cargarOraciones()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">🙏 Oración</button>
-            <button onclick="cargarEstampitas()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">🖼️ Estampas</button>
-            <button onclick="cargarTrivia()" class="py-2 rounded-lg transition hover:bg-zinc-200 dark:hover:bg-zinc-700">❓ Trivia</button>
-        </nav>
+        <!-- MENÚ DESPLEGABLE OCULTO POR DEFECTO (GRAN TAMAÑO PARA FÁCIL ACCESO) -->
+        <div id="dropdown-menu" class="hidden mb-6 p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-xl border border-amber-500/30 space-y-2 transition-all duration-300">
+            <div class="flex justify-between items-center pb-2 border-b border-zinc-200 dark:border-zinc-700">
+                <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Menú Principal</span>
+                <button onclick="toggleMenuDesplegable()" class="text-xs opacity-60 hover:opacity-100 font-bold px-2 py-1">✕ Cerrar</button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="seleccionarOpcionMenu(cargarLibros)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm">
+                    <span class="text-lg">📖</span> Biblia
+                </button>
+                <button onclick="seleccionarOpcionMenu(cargarApocrifos)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm">
+                    <span class="text-lg">📜</span> Apócrifos
+                </button>
+                <button onclick="seleccionarOpcionMenu(abrirBuscador)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm">
+                    <span class="text-lg">🔍</span> Buscar
+                </button>
+                <button onclick="seleccionarOpcionMenu(cargarFavoritos)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm">
+                    <span class="text-lg">⭐</span> Favoritos
+                </button>
+                <button onclick="seleccionarOpcionMenu(cargarPlanes)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm">
+                    <span class="text-lg">📅</span> Planes
+                </button>
+                <button onclick="seleccionarOpcionMenu(cargarOraciones)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm">
+                    <span class="text-lg">🙏</span> Oración
+                </button>
+                <button onclick="seleccionarOpcionMenu(cargarEstampitas)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm">
+                    <span class="text-lg">🖼️</span> Estampas
+                </button>
+                <button onclick="seleccionarOpcionMenu(cargarTrivia)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm">
+                    <span class="text-lg">❓</span> Trivia
+                </button>
+            </div>
+        </div>
 
         <div id="content-box" class="space-y-3">
             <div class="text-center py-10 opacity-65">Cargando...</div>
@@ -94,6 +124,16 @@
         const backBtn = document.getElementById('back-btn');
         const mainTitle = document.getElementById('main-title');
         const mainSubtitle = document.getElementById('main-subtitle');
+        const dropdownMenu = document.getElementById('dropdown-menu');
+
+        function toggleMenuDesplegable() {
+            dropdownMenu.classList.toggle('hidden');
+        }
+
+        function seleccionarOpcionMenu(funcionCarga) {
+            dropdownMenu.classList.add('hidden');
+            funcionCarga();
+        }
 
         async function cargarLibros() {
             currentView = 'books'; isApocryphaMode = false; backBtn.classList.add('hidden');
@@ -210,7 +250,7 @@
             } catch (err) {}
         }
 
-        // --- SECCIÓN DE ORACIÓN, PETICIONES Y ROSARIO INTERACTIVO ---
+        // --- ORACIÓN Y ROSARIO ---
         async function cargarOraciones() {
             currentView = 'prayer'; backBtn.classList.add('hidden'); mainTitle.innerText = "🙏 Oración y Rosario"; mainSubtitle.innerText = "Espacio devocional y guía espiritual"; mainSubtitle.style.display = 'block';
 
@@ -285,7 +325,7 @@
             contentBox.innerHTML = `<div class="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 shadow-sm space-y-4"><div class="text-sm leading-relaxed whitespace-pre-line opacity-95">${formattedContent}</div>${audioHTML}</div>`;
         }
 
-        // --- SECCIÓN NUEVA: ESTAMPITAS Y IMÁGENES DE SANTOS ---
+        // --- ESTAMPITAS Y SANTOS ---
         async function cargarEstampitas() {
             currentView = 'estampitas';
             backBtn.classList.add('hidden');
@@ -295,12 +335,10 @@
 
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando categorías de estampitas...</div>';
             try {
-                // Puedes tener una tabla en supabase llamada 'saint_categories' o similar
                 const { data: categorias, error } = await supabaseClient.from('saint_categories').select('*').order('id');
                 if (error || !categorias || categorias.length === 0) {
-                    // Datos de respaldo si la tabla aún no está creada
                     renderizarListaEstampitas([
-                        { id: 1, name: 'Jesús Misericordioso', description: 'Confo en Ti', image_url: 'https://images.unsplash.com/photo-1548625361-19db2344e5ac?auto=format&fit=crop&w=500&q=80', quote: 'Jesús, en Ti confío. (Salmo 23)' },
+                        { id: 1, name: 'Jesús Misericordioso', description: 'Confío en Ti', image_url: 'https://images.unsplash.com/photo-1548625361-19db2344e5ac?auto=format&fit=crop&w=500&q=80', quote: 'Jesús, en Ti confío. (Salmo 23)' },
                         { id: 2, name: 'Virgen de Guadalupe', description: 'Madre de América', image_url: 'https://images.unsplash.com/photo-1543807535-eceef0bc6599?auto=format&fit=crop&w=500&q=80', quote: '¿No estoy yo aquí que soy tu madre?' }
                     ]);
                     return;
@@ -346,13 +384,12 @@
                         alert("ℹ️ Debes ver el anuncio completo para desbloquear la descarga.");
                     });
             } else {
-                // Modo simulador o si Adsgram no está inicializado en entorno local
                 alert("🎁 [Modo Demo] Anuncio simulado con éxito. Descargando estampita...");
                 window.open(imageUrl, '_blank');
             }
         }
 
-        // --- SISTEMA INTERACTIVO DE SANTO ROSARIO OPTIMIZADO ---
+        // --- ROSARIO ---
         let rosarioActual = { tipo: '', misterioIndex: 0, pasoActual: 'inicio_cruz', cuentaAveMarias: 10 };
         const listaMisteriosData = {
             'Gozosos': [
@@ -447,12 +484,7 @@
         }
 
         function iniciarRezoMisterio(tipo, index, incluirProtocolo) {
-            rosarioActual = {
-                tipo: tipo,
-                misterioIndex: index,
-                pasoActual: incluirProtocolo ? 'inicio_cruz' : 'padrenuestro',
-                cuentaAveMarias: 10
-            };
+            rosarioActual = { tipo: tipo, misterioIndex: index, pasoActual: incluirProtocolo ? 'inicio_cruz' : 'padrenuestro', cuentaAveMarias: 10 };
             renderizarPantallaRezo();
         }
 
@@ -466,30 +498,15 @@
 
             if (rosarioActual.pasoActual === 'inicio_cruz') {
                 audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.senal_cruz}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
-                contenidoPaso = `
-                    <div class="text-amber-500 font-bold text-xs uppercase tracking-wider mb-1">1. Señal de la Cruz</div>
-                    <p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">
-                        "En el nombre del Padre, y del Hijo, y del Espíritu Santo. Amén."
-                    </p>
-                `;
+                contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase tracking-wider mb-1">1. Señal de la Cruz</div><p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">"En el nombre del Padre, y del Hijo, y del Espíritu Santo. Amén."</p>`;
                 botonAccion = `<button onclick="avanzarPasoRosario('inicio_credo')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm shadow-md">Siguiente: El Credo</button>`;
             } else if (rosarioActual.pasoActual === 'inicio_credo') {
                 audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.credo}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
-                contenidoPaso = `
-                    <div class="text-amber-500 font-bold text-xs uppercase tracking-wider mb-1">2. El Credo</div>
-                    <p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">
-                        "Creo en Dios, Padre todopoderoso, Creador del cielo y de la tierra..."
-                    </p>
-                `;
+                contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase tracking-wider mb-1">2. El Credo</div><p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">"Creo en Dios, Padre todopoderoso, Creador del cielo y de la tierra..."</p>`;
                 botonAccion = `<button onclick="avanzarPasoRosario('inicio_ave_1')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm shadow-md">Siguiente: 3 Ave Marías Iniciales</button>`;
             } else if (rosarioActual.pasoActual === 'inicio_ave_1') {
                 audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.avemaria}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
-                contenidoPaso = `
-                    <div class="text-purple-500 font-bold text-xs uppercase tracking-wider mb-1">3. Tres Ave Marías (Virtudes Teologales)</div>
-                    <p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">
-                        Se rezan tres Ave Marías pidiendo Fe, Esperanza y Caridad, seguidas de un Gloria al Padre.
-                    </p>
-                `;
+                contenidoPaso = `<div class="text-purple-500 font-bold text-xs uppercase tracking-wider mb-1">3. Tres Ave Marías (Virtudes Teologales)</div><p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">Se rezan tres Ave Marías pidiendo Fe, Esperanza y Caridad, seguidas de un Gloria al Padre.</p>`;
                 botonAccion = `<button onclick="avanzarPasoRosario('padrenuestro')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm shadow-md">Siguiente: Iniciar la 1ª Decena</button>`;
             } else if (rosarioActual.pasoActual === 'padrenuestro') {
                 audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.padrenuestro}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
@@ -505,11 +522,11 @@
                 botonAccion = `<button onclick="avanzarPasoRosario('jaculatoria')" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-md">Siguiente: Jaculatoria de Fátima</button>`;
             } else if (rosarioActual.pasoActual === 'jaculatoria') {
                 audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.jaculatoria}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
-                contenidoPaso = `<div class="text-indigo-500 font-bold text-xs uppercase tracking-wider mb-1">Jaculatoria de Fátima</div><p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">"¡Oh Jesús mío, perdona nuestros pecados, líbranos del fuego del infierno, lleva al cielo todas las almas, especialmente a las más necesitadas de tu misericordia!"</p>`;
+                contenidoPaso = `<div class="text-indigo-500 font-bold text-xs uppercase tracking-wider mb-1">Jaculatoria de Fátima</div><p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">"¡Oh Jesús mío, perdona nuestros pecados, líbranos del fuego del infierno, lleva al cielo todas las almas...!"</p>`;
                 botonAccion = `<button onclick="siguienteDecenaOFinalizar()" class="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm shadow-md">Continuar / Siguiente Decena</button>`;
             } else if (rosarioActual.pasoActual === 'cierre_salve') {
                 audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.salve}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
-                contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase tracking-wider mb-1">La Salve Regina (Cierre)</div><p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">"Dios salve, Reina y Madre de misericordia, vida, dulzura y esperanza nuestra..."</p>`;
+                contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase tracking-wider mb-1">La Salve Regina (Cierre)</div><p class="text-sm italic opacity-90 leading-relaxed font-serif mb-2">"Dios salve, Reina y Madre de misericordia..."</p>`;
                 botonAccion = `<button onclick="cargarRosarioGuiado()" class="w-full py-3 bg-amber-600 text-white rounded-xl font-bold text-sm shadow-md">🙏 Finalizar Santo Rosario</button>`;
             }
 
@@ -518,28 +535,21 @@
                     <div class="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-700 pb-3">
                         <div><span class="text-xs font-bold text-purple-500 uppercase">Misterios ${tipo}</span><h3 class="font-bold text-base mt-0.5">${nombreMisterio}</h3></div>
                     </div>
-                    <div class="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-inner">
-                        ${audioPaso}
-                        ${contenidoPaso}
-                    </div>
+                    <div class="bg-white dark:bg-zinc-900 p-4 rounded-xl shadow-inner">${audioPaso}${contenidoPaso}</div>
                     <div class="pt-2">${botonAccion}</div>
                 </div>
             `;
         }
 
         function avanzarPasoRosario(nuevoPaso) { rosarioActual.pasoActual = nuevoPaso; renderizarPantallaRezo(); }
-        
         function restarAveMaria() {
             if (rosarioActual.cuentaAveMarias > 1) { rosarioActual.cuentaAveMarias--; } 
             else { rosarioActual.cuentaAveMarias = 0; rosarioActual.pasoActual = 'gloria'; }
             renderizarPantallaRezo();
         }
-
         function siguienteDecenaOFinalizar() {
             if (rosarioActual.misterioIndex < 4) {
-                rosarioActual.misterioIndex++;
-                rosarioActual.pasoActual = 'padrenuestro';
-                rosarioActual.cuentaAveMarias = 10;
+                rosarioActual.misterioIndex++; rosarioActual.pasoActual = 'padrenuestro'; rosarioActual.cuentaAveMarias = 10;
                 renderizarPantallaRezo();
             } else {
                 rosarioActual.pasoActual = 'cierre_salve';
@@ -579,60 +589,45 @@
             } catch (err) {}
         }
 
-        // --- SECCIÓN DE TRIVIA ACTUALIZADA CON OPCIONES A, B, C y D ---
+        // --- TRIVIA COMPLETA (A, B, C, D) ---
         function mostrarAnuncioRecompensado() {
             if (adController) {
                 adController.show()
-                    .then((result) => {
-                        userStats.stars += 10;
-                        guardarStats();
+                    .then(() => {
+                        userStats.stars += 10; guardarStats();
                         document.getElementById('global-stars-display').innerText = userStats.stars;
                         alert("🎉 ¡Gracias por apoyar la app! Has ganado +10 Estrellas ⭐.");
                     })
-                    .catch((result) => {
-                        alert("ℹ️ Debes ver el anuncio completo para recibir la recompensa.");
-                    });
+                    .catch(() => { alert("ℹ️ Debes ver el anuncio completo para recibir la recompensa."); });
             } else {
-                alert("🎁 [Modo Demo] Anuncio simulado con éxito. +10 Estrellas ⭐ añadidas.");
-                userStats.stars += 10;
-                guardarStats();
-                if(document.getElementById('global-stars-display')) {
-                    document.getElementById('global-stars-display').innerText = userStats.stars;
-                }
+                userStats.stars += 10; guardarStats();
+                if(document.getElementById('global-stars-display')) document.getElementById('global-stars-display').innerText = userStats.stars;
+                alert("🎁 [Modo Demo] +10 Estrellas ⭐ añadidas.");
             }
         }
 
         async function cargarTrivia() {
-            currentView = 'trivia'; 
-            backBtn.classList.add('hidden'); 
-            mainTitle.innerText = "❓ Trivia Bíblica"; 
-            mainSubtitle.style.display = 'block';
+            currentView = 'trivia'; backBtn.classList.add('hidden'); 
+            mainTitle.innerText = "❓ Trivia Bíblica"; mainSubtitle.style.display = 'block';
             mainSubtitle.innerText = "Pon a prueba tus conocimientos";
             
             contentBox.innerHTML = `
                 <div class="grid grid-cols-2 gap-2 mb-4">
                     <div class="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl shadow-sm">
                         <span class="text-3xl">⭐</span>
-                        <div>
-                            <div class="text-[10px] font-bold opacity-70 uppercase tracking-wider">Estrellas</div>
-                            <div id="global-stars-display" class="text-base font-extrabold text-amber-500">${userStats.stars}</div>
-                        </div>
+                        <div><div class="text-[10px] font-bold opacity-70 uppercase tracking-wider">Estrellas</div><div id="global-stars-display" class="text-base font-extrabold text-amber-500">${userStats.stars}</div></div>
                     </div>
                     <div class="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 p-3 rounded-xl shadow-sm">
                         <span class="text-3xl">🍷</span>
-                        <div>
-                            <div class="text-[10px] font-bold opacity-70 uppercase tracking-wider">Cálices</div>
-                            <div id="global-chalices-display" class="text-base font-extrabold text-purple-500">${userStats.chalices}</div>
-                        </div>
+                        <div><div class="text-[10px] font-bold opacity-70 uppercase tracking-wider">Cálices</div><div id="global-chalices-display" class="text-base font-extrabold text-purple-500">${userStats.chalices}</div></div>
                     </div>
                 </div>
 
-                <button onclick="mostrarAnuncioRecompensado()" class="w-full mb-4 py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl font-bold text-sm active:scale-98 transition flex items-center justify-between shadow-md">
+                <button onclick="mostrarAnuncioRecompensado()" class="w-full mb-4 py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 text-white rounded-xl font-bold text-sm active:scale-98 transition flex items-center justify-between shadow-md">
                     <span class="flex items-center gap-2">🎁 Ver anuncio y ganar estrellas</span>
                     <span class="bg-amber-700/60 px-3 py-1 rounded-lg text-xs">+10 ⭐</span>
                 </button>
 
-                <!-- CONTENEDOR DE PREGUNTAS CON 4 OPCIONES (A, B, C, D) -->
                 <div id="trivia-container" class="space-y-3 mt-4">
                     <div class="text-center py-6 opacity-65">Cargando preguntas de trivia...</div>
                 </div>
@@ -644,9 +639,8 @@
             const container = document.getElementById('trivia-container');
             try {
                 const { data, error } = await supabaseClient.from('trivia_questions').select('*').limit(10);
-                
                 if (error || !data || data.length === 0) {
-                    container.innerHTML = `<div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center text-sm opacity-80">No hay preguntas de trivia disponibles en la base de datos actualmente.</div>`;
+                    container.innerHTML = `<div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center text-sm opacity-80">No hay preguntas de trivia disponibles.</div>`;
                     return;
                 }
 
@@ -663,15 +657,14 @@
                     </div>
                 `).join('');
             } catch (err) {
-                container.innerHTML = `<div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center text-sm text-red-500">Error al conectar con la base de datos de trivia.</div>`;
+                container.innerHTML = `<div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center text-sm text-red-500">Error al conectar con la base de datos.</div>`;
             }
         }
 
         function verificarRespuestaTrivia(elemento, opcionCorrecta, opcionSeleccionada, puntos) {
             if (opcionSeleccionada === opcionCorrecta) {
                 elemento.classList.add('bg-green-500/20', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
-                userStats.stars += puntos;
-                guardarStats();
+                userStats.stars += puntos; guardarStats();
                 document.getElementById('global-stars-display').innerText = userStats.stars;
                 alert("🌟 ¡Respuesta correcta! Has ganado " + puntos + " estrellas.");
             } else {
@@ -680,7 +673,6 @@
             }
         }
 
-        // --- NAVEGACIÓN HACIA ATRÁS (BOTÓN VOLVER CORREGIDO) ---
         function volverAtras() {
             if (currentView === 'verses') seleccionarLibro(selectedBook.id, selectedBook.name);
             else if (currentView === 'chapters') isApocryphaMode ? cargarApocrifos() : cargarLibros();
