@@ -85,6 +85,8 @@
         let selectedBook = null;
         let selectedCategory = null;
         let selectedStampName = null;
+        let selectedPlan = null;
+        let allPlansCache = [];
         let isApocryphaMode = false;
         let rosarioTipoSeleccionado = '';
         
@@ -205,17 +207,12 @@
             } catch (err) {}
         }
 
-        // --- FAVORITOS RESTAURADOS ---
+        // --- FAVORITOS ---
         function toggleFavorito(book, chapter, verse, text) {
             let favoritos = JSON.parse(localStorage.getItem('bible_favorites') || '[]');
             const index = favoritos.findIndex(f => f.book === book && f.chapter === chapter && f.verse === verse);
-            if (index > -1) {
-                favoritos.splice(index, 1);
-                alert("⭐ Versículo eliminado de favoritos.");
-            } else {
-                favoritos.push({ book, chapter, verse, text });
-                alert("⭐ Versículo guardado en favoritos.");
-            }
+            if (index > -1) { favoritos.splice(index, 1); alert("⭐ Versículo eliminado de favoritos."); }
+            else { favoritos.push({ book, chapter, verse, text }); alert("⭐ Versículo guardado en favoritos."); }
             localStorage.setItem('bible_favorites', JSON.stringify(favoritos));
         }
 
@@ -268,7 +265,7 @@
             } catch (err) {}
         }
 
-        // --- PLANES RESTAURADOS ---
+        // --- PLANES DE LECTURA RESTAURADOS (CON ENTRADA Y SALIDA) ---
         async function cargarPlanes() {
             currentView = 'plans'; backBtn.classList.add('hidden'); mainTitle.innerText = "📅 Planes de Lectura"; mainSubtitle.innerText = "Devocionales"; mainSubtitle.style.display = 'block';
             contentBox.innerHTML = '<div id="plans-list" class="space-y-3"><div class="text-center py-6 opacity-65">Cargando planes...</div></div>';
@@ -276,15 +273,36 @@
                 const { data } = await supabaseClient.from('reading_plans').select('*');
                 allPlansCache = data || [];
                 document.getElementById('plans-list').innerHTML = allPlansCache.map(plan => `
-                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm">
-                        <h3 class="font-bold text-base text-amber-600 dark:text-amber-400">${plan.title}</h3>
-                        <p class="text-xs opacity-75">${plan.description || ''}</p>
+                    <div onclick="abrirPlan(${plan.id})" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-1 shadow-sm cursor-pointer active:scale-98 transition flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-base text-amber-600 dark:text-amber-400">${plan.title}</h3>
+                            <p class="text-xs opacity-75">${plan.description || ''}</p>
+                        </div>
+                        <span class="opacity-40 text-lg">›</span>
                     </div>
                 `).join('');
             } catch (err) { contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar planes.</p>'; }
         }
 
-        // --- ORACIÓN Y ROSARIO RESTAURADOS ---
+        function abrirPlan(planId) {
+            selectedPlan = allPlansCache.find(p => p.id == planId);
+            if (!selectedPlan) return;
+            currentView = 'plan_detail'; backBtn.classList.remove('hidden');
+            mainTitle.innerText = selectedPlan.title; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Detalle del plan devocional";
+            contentBox.innerHTML = `
+                <div class="space-y-4">
+                    <div class="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-2">
+                        <p class="text-sm opacity-90 leading-relaxed">${selectedPlan.description || 'Sin descripción adicional.'}</p>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center space-y-2">
+                        <h4 class="font-bold text-amber-600 dark:text-amber-400 text-sm">📖 Guía de Lectura</h4>
+                        <p class="text-xs opacity-80">Sigue este devocional diario para fortalecer tu espíritu y mantenerte constante en la palabra.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- ORACIÓN Y ROSARIO GUIADO 100% COMPLETO ---
         async function cargarOraciones() {
             currentView = 'prayer'; backBtn.classList.add('hidden'); mainTitle.innerText = "🙏 Oración y Rosario"; mainSubtitle.innerText = "Espacio devocional y guía espiritual"; mainSubtitle.style.display = 'block';
 
@@ -341,14 +359,39 @@
             contentBox.innerHTML = `<div class="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 shadow-sm space-y-4"><div class="text-sm leading-relaxed whitespace-pre-line opacity-95">${formattedContent}</div>${audioHTML}</div>`;
         }
 
-        // --- ROSARIO GUIADO RESTAURADO ---
+        // --- ROSARIO GUIADO RESTAURADO AL 100% ---
         let rosarioActual = { tipo: '', misterioIndex: 0, pasoActual: 'inicio_cruz', cuentaAveMarias: 10 };
         const listaMisteriosData = {
-            'Gozosos': ["1. La encarnación del Hijo de Dios.", "2. La visitación de Nuestra Señora a Santa Isabel.", "3. El nacimiento del Hijo de Dios en Belén.", "4. La presentación del Niño Jesús en el templo.", "5. El Niño Jesús perdido y hallado en el templo."],
-            'Luminosos': ["1. El bautismo de Jesús en el río Jordán.", "2. La autorrevelación de Jesús en las bodas de Caná.", "3. El anuncio del Reino de Dios.", "4. La transfiguración de Jesús en el monte Tabor.", "5. La institución de la Eucaristía."],
-            'Dolorosos': ["1. La oración de Jesús en el huerto de Getsemaní.", "2. La flagelación de nuestro Señor Jesucristo.", "3. La coronación de espinas.", "4. Jesús con la cruz a cuestas camino al Calvario.", "5. La crucifixión y muerte de Jesús."],
-            'Gloriosos': ["1. La resurrección del Hijo de Dios.", "2. La ascensión de Jesús al cielo.", "3. La venida del Espíritu Santo sobre la Virgen María y los apóstoles.", "4. La asunción de los cielos de la Virgen María.", "5. La coronación de la Santísima Virgen como Reina."]
+            'Gozosos': [
+                "1. La encarnación del Hijo de Dios.",
+                "2. La visitación de Nuestra Señora a Santa Isabel.",
+                "3. El nacimiento del Hijo de Dios en Belén.",
+                "4. La presentación del Niño Jesús en el templo.",
+                "5. El Niño Jesús perdido y hallado en el templo."
+            ],
+            'Luminosos': [
+                "1. El bautismo de Jesús en el río Jordán.",
+                "2. La autorrevelación de Jesús en las bodas de Caná.",
+                "3. El anuncio del Reino de Dios.",
+                "4. La transfiguración de Jesús en el monte Tabor.",
+                "5. La institución de la Eucaristía."
+            ],
+            'Dolorosos': [
+                "1. La oración de Jesús en el huerto de Getsemaní.",
+                "2. La flagelación de nuestro Señor Jesucristo.",
+                "3. La coronación de espinas.",
+                "4. Jesús con la cruz a cuestas camino al Calvario.",
+                "5. La crucifixión y muerte de Jesús."
+            ],
+            'Gloriosos': [
+                "1. La resurrección del Hijo de Dios.",
+                "2. La ascensión de Jesús al cielo.",
+                "3. La venida del Espíritu Santo sobre la Virgen María y los apóstoles.",
+                "4. La asunción de los cielos de la Virgen María.",
+                "5. La coronación de la Santísima Virgen como Reina."
+            ]
         };
+
         const rosarioAudioUrls = {
             senal_cruz: "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/en_el_nombre_del_padre.mp3",
             credo: "https://bteeppgksogbqozqvzxu.supabase.co/storage/v1/object/public/audios-oraciones/credo.mp3",
@@ -360,7 +403,8 @@
         };
 
         function cargarRosarioGuiado() {
-            currentView = 'rosary'; backBtn.classList.remove('hidden'); mainTitle.innerText = "📿 Santo Rosario"; mainSubtitle.innerText = "Meditación de los Misterios"; mainSubtitle.style.display = 'block';
+            currentView = 'rosary'; backBtn.classList.remove('hidden'); 
+            mainTitle.innerText = "📿 Santo Rosario"; mainSubtitle.innerText = "Meditación de los Misterios"; mainSubtitle.style.display = 'block';
             contentBox.innerHTML = `
                 <div class="space-y-2">
                     <div onclick="mostrarMisterioRosario('Gozosos')" class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex justify-between items-center cursor-pointer"><div><span class="font-bold text-base">Misterios Gozosos</span><p class="text-xs opacity-70">Lunes y Sábado</p></div><span class="opacity-40 text-lg">›</span></div>
@@ -373,7 +417,8 @@
 
         function mostrarMisterioRosario(tipo) {
             rosarioTipoSeleccionado = tipo;
-            currentView = 'rosary_detail'; backBtn.classList.remove('hidden'); mainTitle.innerText = `Misterios ${tipo}`; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Protocolo del Santo Rosario";
+            currentView = 'rosary_detail'; backBtn.classList.remove('hidden'); 
+            mainTitle.innerText = `Misterios ${tipo}`; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Protocolo del Santo Rosario";
             contentBox.innerHTML = `
                 <div class="space-y-3">
                     <div onclick="iniciarRezoMisterio('${tipo}', 0, true)" class="p-4 rounded-xl bg-purple-600 text-white flex justify-between items-center cursor-pointer shadow-md">
@@ -402,25 +447,33 @@
             let contenidoPaso = '', botonAccion = '', audioPaso = '';
 
             if (rosarioActual.pasoActual === 'inicio_cruz') {
-                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.senal_cruz}" type="audio/mpeg"></audio>`;
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.senal_cruz}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
                 contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase mb-1">1. Señal de la Cruz</div><p class="text-sm italic font-serif">"En el nombre del Padre, y del Hijo, y del Espíritu Santo. Amén."</p>`;
-                botonAccion = `<button onclick="avanzarPasoRosario('padrenuestro')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm">Siguiente</button>`;
+                botonAccion = `<button onclick="avanzarPasoRosario('inicio_credo')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm">Siguiente: El Credo</button>`;
+            } else if (rosarioActual.pasoActual === 'inicio_credo') {
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.credo}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
+                contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase mb-1">2. El Credo</div><p class="text-sm italic font-serif">"Creo en Dios, Padre todopoderoso, Creador del cielo y de la tierra..."</p>`;
+                botonAccion = `<button onclick="avanzarPasoRosario('padrenuestro')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm">Siguiente: Iniciar Decenas</button>`;
             } else if (rosarioActual.pasoActual === 'padrenuestro') {
-                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.padrenuestro}" type="audio/mpeg"></audio>`;
-                contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase mb-1">Padre Nuestro</div><p class="text-sm italic font-serif">"Padre nuestro, que estás en el cielo..."</p>`;
-                botonAccion = `<button onclick="avanzarPasoRosario('avemaria')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm">Siguiente: Ave Marías</button>`;
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.padrenuestro}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
+                contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase mb-1">Padre Nuestro</div><p class="text-sm italic font-serif">"Padre nuestro, que estás en el cielo, santificado sea tu Nombre..."</p>`;
+                botonAccion = `<button onclick="avanzarPasoRosario('avemaria')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm">Siguiente: Ave Marías (10)</button>`;
             } else if (rosarioActual.pasoActual === 'avemaria') {
-                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.avemaria}" type="audio/mpeg"></audio>`;
-                contenidoPaso = `<div class="flex justify-between items-center mb-2"><span class="text-purple-500 font-bold text-xs uppercase">Ave Marías</span><span class="text-lg font-extrabold bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg">Restantes: ${rosarioActual.cuentaAveMarias}</span></div><p class="text-sm italic font-serif mb-4">"Dios te salve, María..."</p>`;
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.avemaria}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
+                contenidoPaso = `<div class="flex justify-between items-center mb-2"><span class="text-purple-500 font-bold text-xs uppercase">Ave Marías</span><span class="text-lg font-extrabold bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg">Restantes: ${rosarioActual.cuentaAveMarias}</span></div><p class="text-sm italic font-serif mb-4">"Dios te salve, María, llena eres de gracia..."</p>`;
                 botonAccion = `<button onclick="restarAveMaria()" class="w-full py-3.5 bg-purple-600 text-white rounded-xl font-bold text-sm shadow-md">📿 Rezar Ave María (-1)</button>`;
             } else if (rosarioActual.pasoActual === 'gloria') {
-                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.gloria}" type="audio/mpeg"></audio>`;
-                contenidoPaso = `<div class="text-blue-500 font-bold text-xs uppercase mb-1">Gloria</div><p class="text-sm italic font-serif">"Gloria al Padre, y al Hijo..."</p>`;
-                botonAccion = `<button onclick="avanzarPasoRosario('jaculatoria')" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm">Siguiente</button>`;
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.gloria}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
+                contenidoPaso = `<div class="text-blue-500 font-bold text-xs uppercase mb-1">Gloria al Padre</div><p class="text-sm italic font-serif">"Gloria al Padre, y al Hijo, y al Espíritu Santo..."</p>`;
+                botonAccion = `<button onclick="avanzarPasoRosario('jaculatoria')" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm">Siguiente: Jaculatoria</button>`;
             } else if (rosarioActual.pasoActual === 'jaculatoria') {
-                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.jaculatoria}" type="audio/mpeg"></audio>`;
-                contenidoPaso = `<div class="text-indigo-500 font-bold text-xs uppercase mb-1">Jaculatoria</div><p class="text-sm italic font-serif">"¡Oh Jesús mío, perdona nuestros pecados...!"</p>`;
-                botonAccion = `<button onclick="siguienteDecenaOFinalizar()" class="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm">Continuar</button>`;
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.jaculatoria}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
+                contenidoPaso = `<div class="text-indigo-500 font-bold text-xs uppercase mb-1">Jaculatoria de Fátima</div><p class="text-sm italic font-serif">"¡Oh Jesús mío, perdona nuestros pecados, líbranos del fuego del infierno...!"</p>`;
+                botonAccion = `<button onclick="siguienteDecenaOFinalizar()" class="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm">Continuar / Siguiente Decena</button>`;
+            } else if (rosarioActual.pasoActual === 'cierre_salve') {
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.salve}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
+                contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase mb-1">La Salve Regina (Cierre)</div><p class="text-sm italic font-serif">"Dios salve, Reina y Madre de misericordia..."</p>`;
+                botonAccion = `<button onclick="cargarRosarioGuiado()" class="w-full py-3 bg-amber-600 text-white rounded-xl font-bold text-sm">🙏 Finalizar Santo Rosario</button>`;
             }
 
             contentBox.innerHTML = `
@@ -442,7 +495,10 @@
             if (rosarioActual.misterioIndex < 4) {
                 rosarioActual.misterioIndex++; rosarioActual.pasoActual = 'padrenuestro'; rosarioActual.cuentaAveMarias = 10;
                 renderizarPantallaRezo();
-            } else { alert("¡Rosario completado con éxito!"); cargarRosarioGuiado(); }
+            } else {
+                rosarioActual.pasoActual = 'cierre_salve';
+                renderizarPantallaRezo();
+            }
         }
 
         async function obtenerListaOraciones() {
@@ -477,7 +533,7 @@
             } catch (err) {}
         }
 
-        // --- ESTAMPAS RESTAURADAS CON PREVISUALIZACIÓN Y ANUNCIOS ---
+        // --- ESTAMPAS ---
         async function cargarEstampitas() {
             currentView = 'estampitas_categories'; backBtn.classList.add('hidden');
             mainTitle.innerText = "🖼️ Estampitas y Santos"; mainSubtitle.innerText = "Selecciona una categoría"; mainSubtitle.style.display = 'block';
@@ -553,7 +609,7 @@
             }
         }
 
-        // --- TRIVIA BÍBLICA RESTAURADA (5 PREGUNTAS) ---
+        // --- TRIVIA BÍBLICA ---
         function mostrarAnuncioRecompensado() {
             if (adController) {
                 adController.show()
@@ -651,6 +707,7 @@
             else if (currentView === 'prayer_detail') cargarMenuCategoriasOraciones();
             else if (currentView === 'rosary_detail') cargarRosarioGuiado();
             else if (currentView === 'rosary_step') mostrarMisterioRosario(rosarioTipoSeleccionado);
+            else if (currentView === 'plan_detail') cargarPlanes();
         }
 
         cargarLibros();
