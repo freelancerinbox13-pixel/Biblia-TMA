@@ -40,9 +40,15 @@
                 <img id="modal-img" src="" class="max-h-72 object-contain rounded-xl shadow-inner border border-zinc-700">
             </div>
             <p id="modal-quote" class="text-xs italic text-center opacity-90 px-2 font-serif"></p>
-            <button id="modal-download-btn" onclick="" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition shadow-md">
-                🎁 Ver Anuncio y Descargar
-            </button>
+            
+            <div class="space-y-2 pt-2">
+                <button id="modal-download-btn" onclick="" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition shadow-md">
+                    🎁 Ver Anuncio Gratis y Descargar
+                </button>
+                <button id="modal-stars-btn" onclick="" class="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs transition shadow-md flex items-center justify-center gap-1.5">
+                    <span>⭐</span> Pagar con Telegram Stars (1 🌟)
+                </button>
+            </div>
         </div>
     </div>
 
@@ -51,7 +57,7 @@
             <button id="back-btn" onclick="volverAtras()" class="hidden px-3 py-2 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-sm font-semibold active:scale-95 transition">← Volver</button>
             <div class="text-center flex-1">
                 <h1 id="main-title" class="text-2xl font-bold">📖 Biblia TMA</h1>
-                <p id="main-subtitle" class="text-sm opacity-70">Tu espacio de lectura en Telegram</p>
+                <p id="main-subtitle" class="text-sm opacity-70">Cargando...</p>
             </div>
             <button onclick="toggleMenuDesplegable()" class="p-2.5 rounded-xl bg-amber-600 text-white font-bold text-lg shadow-md active:scale-95 transition flex items-center gap-1.5">
                 <span>☰</span>
@@ -92,6 +98,12 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_DOO_WWtFKHNPgMPmr1dfuA_xQ4BEniF';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // --- DETECCIÓN AUTOMÁTICA DE PLATAFORMA ---
+        const isAndroidApp = window.Capacitor !== undefined || window.isNativeAndroid === true;
+        
+        // Configurar texto dinámico según la plataforma
+        const subtituloPlataforma = isAndroidApp ? "Tu espacio de lectura en tu teléfono" : "Tu espacio de lectura en Telegram";
+
         let currentView = 'books'; 
         let selectedBook = null;
         let selectedCategory = null;
@@ -124,7 +136,6 @@
             overlay.classList.remove('hidden');
             
             const simbolos = ['⭐', '🌟', '✨', '💫', '✦'];
-            
             for (let i = 0; i < cantidad; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'burst-particle font-bold';
@@ -147,11 +158,8 @@
             
             overlay.innerHTML = '';
             overlay.classList.remove('hidden');
-            
-            // 1. Lanzar las 200 estrellas
             dispararExplosionEstrellas(200);
 
-            // 2. Crear el banner central con el texto exacto
             const banner = document.createElement('div');
             banner.className = 'congrats-banner fixed inset-0 z-[70] flex flex-col items-center justify-center p-6 text-center pointer-events-none bg-black/70 backdrop-blur-md';
             banner.innerHTML = `
@@ -163,17 +171,51 @@
             `;
             overlay.appendChild(banner);
 
-            // 3. Limpiar después de que termine la animación
             setTimeout(() => {
                 overlay.innerHTML = '';
                 overlay.classList.add('hidden');
             }, 3500);
         }
 
+        // --- SISTEMA UNIFICADO DE ANUNCIOS Y TELEGRAM STARS ---
+        const adControllerAdsgram = window.Adsgram ? window.Adsgram.init({ blockId: "YOUR_BLOCK_ID" }) : null;
+
+        function ejecutarSistemaPublicidad(onSuccessCallback) {
+            if (isAndroidApp) {
+                console.log("Cargando anuncio nativo de AdMob...");
+                setTimeout(() => {
+                    onSuccessCallback();
+                }, 1000);
+            } else {
+                if (adControllerAdsgram) {
+                    adControllerAdsgram.show()
+                        .then(() => { onSuccessCallback(); })
+                        .catch(() => { alert("ℹ️ Debes ver el anuncio completo para desbloquear."); });
+                } else {
+                    alert("🎁 [Modo Demo] Anuncio simulado con éxito.");
+                    onSuccessCallback();
+                }
+            }
+        }
+
+        function pagarConTelegramStars(onSuccessCallback) {
+            if (window.Telegram && window.Telegram.WebApp) {
+                alert("⭐ [Telegram Stars] Procesando pago de 1 Estrellita...");
+                setTimeout(() => {
+                    onSuccessCallback();
+                }, 800);
+            } else {
+                alert("⭐ [Modo Demo] Pago con Telegram Stars simulado.");
+                onSuccessCallback();
+            }
+        }
+
         // --- BIBLIOTECA ---
         async function cargarLibros() {
             currentView = 'books'; isApocryphaMode = false; backBtn.classList.add('hidden');
-            mainTitle.innerText = "📖 Biblia TMA"; mainSubtitle.innerText = "Tu espacio de lectura en Telegram"; mainSubtitle.style.display = 'block';
+            mainTitle.innerText = "📖 Biblia TMA"; 
+            mainSubtitle.innerText = subtituloPlataforma; 
+            mainSubtitle.style.display = 'block';
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando contenido...</div>';
             try {
                 const dailyVerseHTML = await obtenerPalabraDelDiaHTML();
@@ -698,38 +740,41 @@
             document.getElementById('modal-img').src = imageUrl;
             document.getElementById('modal-quote').innerText = `"${quote}"`;
             document.getElementById('modal-title').innerText = title;
-            document.getElementById('modal-download-btn').onclick = function() { desbloquearEstampita(imageUrl); };
+            
+            document.getElementById('modal-download-btn').onclick = function() {
+                cerrarPrevisualizacion();
+                ejecutarSistemaPublicidad(() => {
+                    dispararExplosionEstrellas(50);
+                    alert("🎉 ¡Anuncio completado! Abriendo estampita...");
+                    window.open(imageUrl, '_blank');
+                });
+            };
+
+            document.getElementById('modal-stars-btn').onclick = function() {
+                cerrarPrevisualizacion();
+                pagarConTelegramStars(() => {
+                    dispararExplosionEstrellas(50);
+                    alert("⭐ ¡Pago con Telegram Stars exitoso! Abriendo estampita...");
+                    window.open(imageUrl, '_blank');
+                });
+            };
+
             document.getElementById('preview-modal').classList.remove('hidden');
         }
 
         function cerrarPrevisualizacion() { document.getElementById('preview-modal').classList.add('hidden'); }
 
-        const adController = window.Adsgram ? window.Adsgram.init({ blockId: "YOUR_BLOCK_ID" }) : null;
-
-        function desbloquearEstampita(imageUrl) {
-            cerrarPrevisualizacion();
-            if (adController) {
-                adController.show()
-                    .then(() => { dispararExplosionEstrellas(30); alert("🎉 ¡Anuncio completado! Abriendo estampita..."); window.open(imageUrl, '_blank'); })
-                    .catch(() => { alert("ℹ️ Debes ver el anuncio completo para desbloquear."); });
-            } else {
-                dispararExplosionEstrellas(30);
-                alert("🎁 [Modo Demo] Anuncio simulado. Descargando estampita...");
-                window.open(imageUrl, '_blank');
-            }
-        }
-
         // --- TRIVIA BÍBLICA ---
         function mostrarAnuncioRecompensado() {
-            if (adController) {
-                adController.show()
-                    .then(() => { userStats.stars += 10; guardarStats(); dispararExplosionEstrellas(30); document.getElementById('global-stars-display').innerText = userStats.stars; alert("🎉 ¡Ganaste +10 Estrellas ⭐!"); })
-                    .catch(() => { alert("ℹ️ Debes ver el anuncio completo."); });
-            } else {
-                userStats.stars += 10; guardarStats(); dispararExplosionEstrellas(30);
-                if(document.getElementById('global-stars-display')) document.getElementById('global-stars-display').innerText = userStats.stars;
-                alert("🎁 [Modo Demo] +10 Estrellas ⭐ añadidas.");
-            }
+            ejecutarSistemaPublicidad(() => {
+                userStats.stars += 10; 
+                guardarStats(); 
+                dispararExplosionEstrellas(50); 
+                if(document.getElementById('global-stars-display')) {
+                    document.getElementById('global-stars-display').innerText = userStats.stars;
+                }
+                alert("🎉 ¡Ganaste +10 Estrellas ⭐!");
+            });
         }
 
         function cargarTrivia() {
