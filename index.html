@@ -71,7 +71,7 @@
         let selectedPlan = null;
         let allPlansCache = [];
         let isApocryphaMode = false;
-        let rosarioTipoSeleccionado = ''; // Memoria para saber qué misterio estaba abierto
+        let rosarioTipoSeleccionado = '';
         
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
         let currentTelegramId = tgUser?.id || 123456789;
@@ -329,7 +329,7 @@
 
         function cargarRosarioGuiado() {
             currentView = 'rosary'; 
-            backBtn.classList.remove('hidden'); // Muestra el botón volver para regresar a Oración y Rosario principal
+            backBtn.classList.remove('hidden'); 
             mainTitle.innerText = "📿 Santo Rosario"; 
             mainSubtitle.innerText = "Meditación de los Misterios"; 
             mainSubtitle.style.display = 'block';
@@ -354,7 +354,6 @@
             
             contentBox.innerHTML = `
                 <div class="space-y-3">
-                    <!-- BOTÓN DE EMPEZAR OPTIMIZADO (Diseño limpio en bloque, sin sobreponerse al texto) -->
                     <div onclick="iniciarRezoMisterio('${tipo}', 0, true)" class="p-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer active:scale-98 transition shadow-md">
                         <div>
                             <span class="text-[10px] uppercase tracking-wider font-extrabold bg-purple-800 px-2 py-0.5 rounded text-purple-200">Rezo Litúrgico Completo</span>
@@ -532,7 +531,11 @@
         }
 
         async function cargarTrivia() {
-            currentView = 'trivia'; backBtn.classList.add('hidden'); mainTitle.innerText = "❓ Trivia Bíblica"; mainSubtitle.style.display = 'block';
+            currentView = 'trivia'; 
+            backBtn.classList.add('hidden'); 
+            mainTitle.innerText = "❓ Trivia Bíblica"; 
+            mainSubtitle.style.display = 'block';
+            mainSubtitle.innerText = "Pon a prueba tus conocimientos"; // <--- Subtítulo corregido aquí
             
             contentBox.innerHTML = `
                 <div class="grid grid-cols-2 gap-2 mb-4">
@@ -567,9 +570,9 @@
             else if (currentView === 'chapters') isApocryphaMode ? cargarApocrifos() : cargarLibros();
             else if (currentView === 'prayer_categories') cargarOraciones();
             else if (currentView === 'prayer_detail') cargarMenuCategoriasOraciones();
-            else if (currentView === 'rosary') cargarOraciones(); // Vuelve al menú principal de Oración y Rosario
-            else if (currentView === 'rosary_detail') cargarRosarioGuiado(); // Vuelve a la selección de misterios
-            else if (currentView === 'rosary_step') mostrarMisterioRosario(rosarioTipoSeleccionado); // Vuelve a las decenas del misterio actual
+            else if (currentView === 'rosary') cargarOraciones(); 
+            else if (currentView === 'rosary_detail') cargarRosarioGuiado(); 
+            else if (currentView === 'rosary_step') mostrarMisterioRosario(rosarioTipoSeleccionado); 
         }
 
         cargarLibros();
