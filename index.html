@@ -526,7 +526,7 @@
                         alert("ℹ️ Debes ver el anuncio completo para recibir la recompensa.");
                     });
             } else {
-                alert("El sistema de anuncios está cargando o no está disponible en este momento.");
+                alert("El시스템 de anuncios está cargando o no está disponible en este momento.");
             }
         }
 
@@ -560,8 +560,52 @@
                     <span class="bg-amber-700/60 px-3 py-1 rounded-lg text-xs">+10 ⭐</span>
                 </button>
 
-                <div class="text-center py-6 opacity-65">Sección de trivia lista.</div>
+                <!-- CONTENEDOR DINÁMICO DE PREGUNTAS DE TRIVIA -->
+                <div id="trivia-container" class="space-y-3 mt-4">
+                    <div class="text-center py-6 opacity-65">Cargando preguntas de trivia...</div>
+                </div>
             `;
+            obtenerPreguntasTrivia();
+        }
+
+        async function obtenerPreguntasTrivia() {
+            const container = document.getElementById('trivia-container');
+            try {
+                // Realiza la consulta a la tabla de trivia en Supabase (asegúrate de que tu tabla se llame 'trivia_questions' o ajusta el nombre)
+                const { data, error } = await supabaseClient.from('trivia_questions').select('*').limit(10);
+                
+                if (error || !data || data.length === 0) {
+                    container.innerHTML = `<div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center text-sm opacity-80">No hay preguntas de trivia disponibles en la base de datos actualmente.</div>`;
+                    return;
+                }
+
+                // Renderiza la primera pregunta o un listado interactivo de preguntas
+                container.innerHTML = data.map((q, index) => `
+                    <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-3 shadow-sm">
+                        <div class="text-xs font-bold text-amber-500 uppercase">Pregunta ${index + 1}</div>
+                        <p class="font-semibold text-sm">${q.question_text || q.question}</p>
+                        <div class="space-y-2 pt-1">
+                            <div onclick="verificarRespuestaTrivia(this, true, ${q.points || 5})" class="p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium cursor-pointer active:scale-98 transition hover:bg-amber-500/10">A) ${q.option_a || q.correct_answer}</div>
+                            <div onclick="verificarRespuestaTrivia(this, false, 0)" class="p-2.5 rounded-lg bg-white dark:bg-zinc-900 text-xs font-medium cursor-pointer active:scale-98 transition hover:bg-amber-500/10">B) ${q.option_b || 'Opción incorrecta'}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                container.innerHTML = `<div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-center text-sm text-red-500">Error al conectar con la base de datos de trivia.</div>`;
+            }
+        }
+
+        function verificarRespuestaTrivia(elemento, esCorrecta, puntos) {
+            if (esCorrecta) {
+                elemento.classList.add('bg-green-500/20', 'border', 'border-green-500', 'text-green-600', 'dark:text-green-400');
+                userStats.stars += puntos;
+                guardarStats();
+                document.getElementById('global-stars-display').innerText = userStats.stars;
+                alert("🌟 ¡Respuesta correcta! Has ganado " + puntos + " estrellas.");
+            } else {
+                elemento.classList.add('bg-red-500/20', 'border', 'border-red-500', 'text-red-600', 'dark:text-red-400');
+                alert("❌ Respuesta incorrecta. ¡Sigue intentándolo!");
+            }
         }
 
         // --- NAVEGACIÓN HACIA ATRÁS (BOTÓN VOLVER CORREGIDO) ---
