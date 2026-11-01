@@ -265,7 +265,7 @@
             } catch (err) {}
         }
 
-        // --- PLANES DE LECTURA (CON FECHAS, HORAS, ENTRAR Y SALIR) ---
+        // --- PLANES DE LECTURA ---
         async function cargarPlanes() {
             currentView = 'plans'; backBtn.classList.add('hidden'); mainTitle.innerText = "📅 Planes de Lectura"; mainSubtitle.innerText = "Devocionales"; mainSubtitle.style.display = 'block';
             contentBox.innerHTML = `
@@ -414,7 +414,7 @@
             contentBox.innerHTML = `<div class="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 shadow-sm space-y-4"><div class="text-sm leading-relaxed whitespace-pre-line opacity-95">${formattedContent}</div>${audioHTML}</div>`;
         }
 
-        // --- ROSARIO GUIADO (BOTÓN EMPEZAR ADAPTADO) ---
+        // --- ROSARIO GUIADO 100% COMPLETO (INICIO CON CRUZ, CREDO Y 3 AVE MARÍAS) ---
         let rosarioActual = { tipo: '', misterioIndex: 0, pasoActual: 'padrenuestro', cuentaAveMarias: 10 };
         const listaMisteriosData = {
             'Gozosos': [
@@ -480,7 +480,7 @@
                     <div class="p-4 rounded-xl bg-purple-600 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-md">
                         <div class="pr-2">
                             <span class="text-[10px] uppercase font-extrabold bg-purple-800 px-2 py-0.5 rounded text-purple-200">Rezo Litúrgico Opcional</span>
-                            <p class="font-bold text-xs sm:text-sm mt-1">🙏 Protocolo Inicial (Cruz, Credo...)</p>
+                            <p class="font-bold text-xs sm:text-sm mt-1">🙏 Protocolo Inicial (Cruz, Credo, Ave Marías...)</p>
                         </div>
                         <button onclick="iniciarRezoMisterio('${tipo}', 0, true)" class="w-full sm:w-auto text-center text-xs bg-white text-purple-700 px-4 py-2 rounded-lg font-bold shadow-sm active:scale-95 transition">Empezar ›</button>
                     </div>
@@ -515,6 +515,10 @@
             } else if (rosarioActual.pasoActual === 'inicio_credo') {
                 audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.credo}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
                 contenidoPaso = `<div class="text-amber-500 font-bold text-xs uppercase mb-1">2. El Credo</div><p class="text-sm italic font-serif">"Creo en Dios, Padre todopoderoso, Creador del cielo y de la tierra..."</p>`;
+                botonAccion = `<button onclick="avanzarPasoRosario('inicio_ave_1')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm">Siguiente: 3 Ave Marías (Virtudes)</button>`;
+            } else if (rosarioActual.pasoActual === 'inicio_ave_1') {
+                audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.avemaria}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
+                contenidoPaso = `<div class="text-purple-500 font-bold text-xs uppercase mb-1">3. Tres Ave Marías (Fe, Esperanza y Caridad)</div><p class="text-sm italic font-serif mb-2">Se rezan tres Ave Marías pidiendo las virtudes teologales, seguidas de un Gloria.</p>`;
                 botonAccion = `<button onclick="avanzarPasoRosario('padrenuestro')" class="w-full py-3 bg-purple-600 text-white rounded-xl font-bold text-sm">Siguiente: Iniciar las Decenas</button>`;
             } else if (rosarioActual.pasoActual === 'padrenuestro') {
                 audioPaso = `<audio controls autoplay class="w-full mb-3"><source src="${rosarioAudioUrls.padrenuestro}" type="audio/mpeg">Tu navegador no soporta audio.</audio>`;
