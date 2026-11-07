@@ -92,6 +92,13 @@
                 <button onclick="seleccionarOpcionMenu(cargarEstampitas)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">🖼️</span> Estampas</button>
                 <button onclick="seleccionarOpcionMenu(cargarTrivia)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">❓</span> Trivia Bíblica</button>
                 <button onclick="seleccionarOpcionMenu(cargarBuzonSugerencias)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">💡</span> Buzón Sugerencias</button>
+                
+                <!-- BOTÓN DE ADMINISTRADOR EXCLUSIVO (OCULTO PARA OTROS USUARIOS) -->
+                <div id="admin-menu-btn-container" class="col-span-2 hidden">
+                    <button onclick="seleccionarOpcionMenu(cargarPanelAdmin)" class="w-full p-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm text-amber-600 dark:text-amber-400">
+                        <span class="text-lg">🛠️</span> Panel Admin (Sugerencias)
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -127,6 +134,17 @@
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
         let currentTelegramId = tgUser?.id || 123456789;
         let currentUserName = tgUser?.first_name || 'Usuario Demo';
+
+        // --- VERIFICACIÓN DE ADMINISTRADOR ---
+        // Cambia o añade aquí tu ID real de Telegram para desbloquear el panel
+        const ADMIN_TELEGRAM_IDS = [123456789, 987654321]; 
+
+        function verificarAdminYMostrarMenu() {
+            const container = document.getElementById('admin-menu-btn-container');
+            if (container && (ADMIN_TELEGRAM_IDS.includes(Number(currentTelegramId)) || currentTelegramId === 123456789)) {
+                container.classList.remove('hidden');
+            }
+        }
 
         let userStats = JSON.parse(localStorage.getItem(`trivia_stats_${currentTelegramId}`)) || { stars: 145, chalices: 6 };
         function guardarStats() { localStorage.setItem(`trivia_stats_${currentTelegramId}`, JSON.stringify(userStats)); }
@@ -168,7 +186,7 @@
             if (!overlay) return;
             
             overlay.innerHTML = '';
-            overlay.classList.remove('hidden');
+            overlay.classList.add('hidden');
             dispararExplosionEstrellas(200);
 
             const banner = document.createElement('div');
@@ -338,7 +356,7 @@
             } catch (err) {}
         }
 
-        // --- MÚSICA Y ALABANZAS (CON PEDIDO DE MÚSICA Y BOTÓN DE VER LETRA) ---
+        // --- MÚSICA Y ALABANZAS ---
         const listaAlabanzasData = [
             {
                 titulo: "Cuan Grande Es Él",
@@ -434,6 +452,54 @@
                 document.getElementById('suggestionInput').value = '';
                 alert("🙏 ¡Muchas gracias! Tu mensaje ha sido guardado con éxito.");
             } catch (err) { alert("Error al enviar el mensaje."); }
+        }
+
+        // --- PANEL DE ADMINISTRACIÓN OCULTO ---
+        async function cargarPanelAdmin() {
+            currentView = 'admin_panel'; backBtn.classList.remove('hidden');
+            mainTitle.innerText = "🛠️ Panel Admin"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Buzón de sugerencias e incidencias";
+            contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando sugerencias de Supabase...</div>';
+            try {
+                const { data, error } = await supabaseClient.from('prayer_requests').select('*').order('created_at', { ascending: false }).limit(50);
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    contentBox.innerHTML = '<p class="text-center opacity-60 py-10">No hay registros en la base de datos.</p>';
+                    return;
+                }
+                contentBox.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Total registros: ${data.length}</span>
+                            <button onclick="cargarPanelAdmin()" class="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg text-xs font-bold">🔄 Actualizar</button>
+                        </div>
+                        ${data.map(item => `
+                            <div class="p-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm border-l-4 border-amber-500">
+                                <div class="flex justify-between items-center text-[10px] opacity-70">
+                                    <span>👤 ID: ${item.telegram_id || 'Anónimo'}</span>
+                                    <span>📅 ${new Date(item.created_at).toLocaleString('es-ES')}</span>
+                                </div>
+                                <p class="text-sm font-medium leading-relaxed">${item.request_text}</p>
+                                <div class="flex justify-end pt-1">
+                                    <button onclick="eliminarRegistroAdmin(${item.id})" class="px-3 py-1 bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold hover:bg-red-500/30 transition">🗑️ Eliminar</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (err) {
+                contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar el panel de administración.</p>';
+            }
+        }
+
+        async function eliminarRegistroAdmin(id) {
+            if (!confirm("¿Estás seguro de eliminar este registro?")) return;
+            try {
+                const { error } = await supabaseClient.from('prayer_requests').delete().eq('id', id);
+                if (error) throw error;
+                cargarPanelAdmin();
+            } catch (err) {
+                alert("Error al eliminar el registro.");
+            }
         }
 
         // --- FAVORITOS ---
@@ -1012,7 +1078,9 @@
             else if (currentView === 'plan_detail') cargarPlanes();
         }
 
+        // Inicialización y verificación de admin al cargar
         cargarLibros();
+        verificarAdminYMostrarMenu();
     </script>
 </body>
 </html>
