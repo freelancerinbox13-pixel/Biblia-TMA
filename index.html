@@ -93,7 +93,7 @@
                 <button onclick="seleccionarOpcionMenu(cargarTrivia)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">❓</span> Trivia Bíblica</button>
                 <button onclick="seleccionarOpcionMenu(cargarBuzonSugerencias)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">💡</span> Buzón Sugerencias</button>
                 
-                <!-- BOTÓN DE ADMINISTRADOR EXCLUSIVO (OCULTO PARA OTROS USUARIOS) -->
+                <!-- BOTÓN DE ADMINISTRADOR EXCLUSIVO (CONFIGURADO CON TU ID 5937446636) -->
                 <div id="admin-menu-btn-container" class="col-span-2 hidden">
                     <button onclick="seleccionarOpcionMenu(cargarPanelAdmin)" class="w-full p-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm text-amber-600 dark:text-amber-400">
                         <span class="text-lg">🛠️</span> Panel Admin (Sugerencias)
@@ -132,16 +132,15 @@
         let currentBibleFilter = 'all'; 
         
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-        let currentTelegramId = tgUser?.id || 123456789;
+        let currentTelegramId = tgUser?.id || 5937446636;
         let currentUserName = tgUser?.first_name || 'Usuario Demo';
 
-        // --- VERIFICACIÓN DE ADMINISTRADOR ---
-        // Cambia o añade aquí tu ID real de Telegram para desbloquear el panel
-        const ADMIN_TELEGRAM_IDS = [123456789, 987654321]; 
+        // --- VERIFICACIÓN DE ADMINISTRADOR (CONFIGURADO CON TU ID REAL) ---
+        const ADMIN_TELEGRAM_IDS = [5937446636]; 
 
         function verificarAdminYMostrarMenu() {
             const container = document.getElementById('admin-menu-btn-container');
-            if (container && (ADMIN_TELEGRAM_IDS.includes(Number(currentTelegramId)) || currentTelegramId === 123456789)) {
+            if (container && ADMIN_TELEGRAM_IDS.includes(Number(currentTelegramId))) {
                 container.classList.remove('hidden');
             }
         }
