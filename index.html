@@ -65,7 +65,7 @@
             </button>
         </header>
 
-        <!-- MENÚ DESPLEGABLE -->
+        <!-- MENÚ DESPLEGABLE OCULTO -->
         <div id="dropdown-menu" class="hidden mb-6 p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-xl border border-amber-500/30 space-y-2 transition-all duration-300">
             <div class="flex justify-between items-center pb-2 border-b border-zinc-200 dark:border-zinc-700">
                 <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Menú Principal</span>
@@ -99,7 +99,6 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_DOO_WWtFKHNPgMPmr1dfuA_xQ4BEniF';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- DETECCIÓN AUTOMÁTICA DE PLATAFORMA ---
         const isAndroidApp = window.Capacitor !== undefined || window.isNativeAndroid === true;
         const subtituloPlataforma = isAndroidApp ? "Tu espacio de lectura en tu teléfono" : "Tu espacio de lectura en Telegram";
 
@@ -178,7 +177,6 @@
             }, 3500);
         }
 
-        // --- SISTEMA UNIFICADO DE ANUNCIOS Y TELEGRAM STARS ---
         const adControllerAdsgram = window.Adsgram ? window.Adsgram.init({ blockId: "YOUR_BLOCK_ID" }) : null;
 
         function ejecutarSistemaPublicidad(onSuccessCallback) {
@@ -329,17 +327,17 @@
             } catch (err) {}
         }
 
-        // --- MÚSICA Y ALABANZAS ---
+        // --- MÚSICA Y ALABANZAS / BUZÓN DE SUGERENCIAS GENERAL ---
         function cargarMusica() {
             currentView = 'music'; backBtn.classList.add('hidden'); 
-            mainTitle.innerText = "🎵 Alabanzas y Música"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Escucha y alaba al Señor";
+            mainTitle.innerText = "🎵 Alabanzas y Sugerencias"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Música y buzón de la comunidad";
             contentBox.innerHTML = `
                 <div class="space-y-4">
                     <div class="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-3">
-                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Sugerencias y Peticiones de Música</h3>
-                        <p class="text-xs opacity-80">¿Qué canción, artista o alabanza te gustaría que añadamos?</p>
-                        <textarea id="musicSuggestionInput" placeholder="Escribe tu sugerencia de música o alabanza..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
-                        <button onclick="enviarSugerenciaMusica()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition">Enviar Sugerencia</button>
+                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Buzón de Sugerencias y Cambios</h3>
+                        <p class="text-xs opacity-80">¿Qué oración falta, qué incidencia has tenido o qué cambio te gustaría proponer?</p>
+                        <textarea id="musicSuggestionInput" placeholder="Escribe aquí tu sugerencia, oración faltante, incidencia o cambio..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
+                        <button onclick="enviarSugerenciaMusica()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition">Enviar Sugerencia / Incidencia</button>
                     </div>
 
                     <div class="space-y-2">
@@ -369,12 +367,12 @@
 
         async function enviarSugerenciaMusica() {
             const text = document.getElementById('musicSuggestionInput').value.trim();
-            if (!text) { alert("Escribe una sugerencia antes de enviar."); return; }
+            if (!text) { alert("Escribe un mensaje antes de enviar."); return; }
             try {
-                await supabaseClient.from('prayer_requests').insert([{ telegram_id: currentTelegramId, request_text: "🎵 [Música/Sugerencia]: " + text, is_public: true }]);
+                await supabaseClient.from('prayer_requests').insert([{ telegram_id: currentTelegramId, request_text: "💡 [Sugerencia/Incidencia]: " + text, is_public: true }]);
                 document.getElementById('musicSuggestionInput').value = '';
-                alert("🙏 ¡Muchas gracias! Tu sugerencia de música ha sido guardada con éxito.");
-            } catch (err) { alert("Error al enviar la sugerencia."); }
+                alert("🙏 ¡Muchas gracias! Tu sugerencia o reporte ha sido guardado con éxito.");
+            } catch (err) { alert("Error al enviar el mensaje."); }
         }
 
         // --- FAVORITOS ---
