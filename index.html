@@ -52,6 +52,16 @@
         </div>
     </div>
 
+    <!-- MODAL DE LETRA DE ALABANZA -->
+    <div id="lyrics-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-zinc-900 text-white rounded-2xl max-w-sm w-full p-5 relative space-y-3 shadow-2xl border border-amber-500/30">
+            <button onclick="cerrarModalLetra()" class="absolute top-3 right-3 bg-zinc-800 text-white w-8 h-8 rounded-full font-bold flex items-center justify-center hover:bg-zinc-700">✕</button>
+            <h3 id="lyrics-modal-title" class="font-bold text-base text-amber-400 text-center pr-6">Letra de la Alabanza</h3>
+            <div id="lyrics-modal-content" class="text-xs italic opacity-90 px-2 font-serif whitespace-pre-line max-h-72 overflow-y-auto bg-zinc-800 p-3 rounded-xl leading-relaxed"></div>
+            <button onclick="cerrarModalLetra()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition shadow-md">Cerrar</button>
+        </div>
+    </div>
+
     <div class="max-w-md mx-auto">
         <header class="mb-4 flex items-center justify-between relative">
             <button id="back-btn" onclick="volverAtras()" class="hidden px-3 py-2 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-sm font-semibold active:scale-95 transition">← Volver</button>
@@ -65,7 +75,7 @@
             </button>
         </header>
 
-        <!-- MENÚ DESPLEGABLE OCULTO (CON EL NUEVO BOTÓN DE BUZÓN AL LADO DE TRIVIA) -->
+        <!-- MENÚ DESPLEGABLE OCULTO -->
         <div id="dropdown-menu" class="hidden mb-6 p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-xl border border-amber-500/30 space-y-2 transition-all duration-300">
             <div class="flex justify-between items-center pb-2 border-b border-zinc-200 dark:border-zinc-700">
                 <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Menú Principal</span>
@@ -328,35 +338,76 @@
             } catch (err) {}
         }
 
-        // --- MÚSICA Y ALABANZAS (SOLO MÚSICA) ---
+        // --- MÚSICA Y ALABANZAS (CON PEDIDO DE MÚSICA Y BOTÓN DE VER LETRA) ---
+        const listaAlabanzasData = [
+            {
+                titulo: "Cuan Grande Es Él",
+                tipo: "Adoración",
+                resumen: "Señor, mi Dios, al contemplar los cielos, el firmamento y las estrellas mil...",
+                youtube: "https://www.youtube.com/results?search_query=Cuan+Grande+Es+El",
+                letra: "Señor, mi Dios, al contemplar los cielos,\nel firmamento y las estrellas mil,\noír los truenos en ruidosos vuelos\ny ver al sol en su cenit brillar.\n\nMi corazón entona la canción:\n¡Cuan grande es Él! ¡Cuan grande es Él!\nMi corazón entona la canción:\n¡Cuan grande es Él! ¡Cuan grande es Él!"
+            },
+            {
+                titulo: "En El Monte Calvario",
+                tipo: "Alabanza",
+                resumen: "La vieja cruz marcó historia un día por el bien de la humanidad...",
+                youtube: "https://www.youtube.com/results?search_query=En+El+Monte+Calvario+himno",
+                letra: "En el monte calvario una cruz se alzó,\nsímbolo de afrenta y dolor;\ny yo amo esa cruz donde el Rey de los cielos\nsufrió y murió por el pecador.\n\n¡Oh, yo siempre amaré esa cruz!\nEn sus triunfos mi gloria será;\ny algún día en los cielos, con Cristo en su luz,\npara siempre mi gloria será."
+            }
+        ];
+
         function cargarMusica() {
             currentView = 'music'; backBtn.classList.add('hidden'); 
             mainTitle.innerText = "🎵 Alabanzas y Música"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Escucha y alaba al Señor";
             contentBox.innerHTML = `
                 <div class="space-y-4">
+                    <div class="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Sugerencias y Peticiones de Música</h3>
+                        <p class="text-xs opacity-80">¿Qué canción, cantante, autor o alabanza te gustaría que añadamos?</p>
+                        <textarea id="musicSuggestionInput" placeholder="Escribe tu sugerencia de música, cantante o autor..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
+                        <button onclick="enviarSugerenciaMusica()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition">Enviar Sugerencia</button>
+                    </div>
+
                     <div class="space-y-2">
                         <h3 class="font-bold text-sm">🎧 Alabanzas Recomendadas</h3>
                         
-                        <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between">
-                            <div>
-                                <span class="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded">Adoración</span>
-                                <h4 class="font-bold text-base mt-1">Cuan Grande Es Él</h4>
-                                <p class="text-xs italic opacity-85 mt-1">"Señor, mi Dios, al contemplar los cielos, el firmamento y las estrellas mil..."</p>
+                        ${listaAlabanzasData.map((alabanza, idx) => `
+                            <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <span class="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded">${alabanza.tipo}</span>
+                                    <h4 class="font-bold text-base mt-1">${alabanza.titulo}</h4>
+                                    <p class="text-xs italic opacity-85 mt-1">"${alabanza.resumen}"</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 mt-2">
+                                    <button onclick="abrirModalLetra(${idx})" class="py-2.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded-xl font-bold text-xs transition shadow text-center">📜 Ver Letra</button>
+                                    <a href="${alabanza.youtube}" target="_blank" class="block text-center py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs transition shadow">▶️ YouTube</a>
+                                </div>
                             </div>
-                            <a href="https://www.youtube.com/results?search_query=Cuan+Grande+Es+El" target="_blank" class="block text-center py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs transition shadow mt-2">▶️ Escuchar en YouTube</a>
-                        </div>
-
-                        <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between">
-                            <div>
-                                <span class="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded">Alabanza</span>
-                                <h4 class="font-bold text-base mt-1">En El Monte Calvario</h4>
-                                <p class="text-xs italic opacity-85 mt-1">"La vieja cruz marcó historia un día por el bien de la humanidad..."</p>
-                            </div>
-                            <a href="https://www.youtube.com/results?search_query=En+El+Monte+Calvario+himno" target="_blank" class="block text-center py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs transition shadow mt-2">▶️ Escuchar en YouTube</a>
-                        </div>
+                        `).join('')}
                     </div>
                 </div>
             `;
+        }
+
+        function abrirModalLetra(index) {
+            const alabanza = listaAlabanzasData[index];
+            document.getElementById('lyrics-modal-title').innerText = alabanza.titulo;
+            document.getElementById('lyrics-modal-content').innerText = alabanza.letra;
+            document.getElementById('lyrics-modal').classList.remove('hidden');
+        }
+
+        function cerrarModalLetra() {
+            document.getElementById('lyrics-modal').classList.add('hidden');
+        }
+
+        async function enviarSugerenciaMusica() {
+            const text = document.getElementById('musicSuggestionInput').value.trim();
+            if (!text) { alert("Escribe una sugerencia antes de enviar."); return; }
+            try {
+                await supabaseClient.from('prayer_requests').insert([{ telegram_id: currentTelegramId, request_text: "🎵 [Música/Cantante]: " + text, is_public: true }]);
+                document.getElementById('musicSuggestionInput').value = '';
+                alert("🙏 ¡Muchas gracias! Tu sugerencia de música ha sido guardada con éxito.");
+            } catch (err) { alert("Error al enviar la sugerencia."); }
         }
 
         // --- BUZÓN DE SUGERENCIAS INDEPENDIENTE ---
