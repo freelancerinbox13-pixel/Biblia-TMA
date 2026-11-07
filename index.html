@@ -78,8 +78,9 @@
                 <button onclick="seleccionarOpcionMenu(cargarFavoritos)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">⭐</span> Favoritos</button>
                 <button onclick="seleccionarOpcionMenu(cargarPlanes)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">📅</span> Planes</button>
                 <button onclick="seleccionarOpcionMenu(cargarOraciones)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">🙏</span> Oración</button>
+                <button onclick="seleccionarOpcionMenu(cargarMusica)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">🎵</span> Alabanzas</button>
                 <button onclick="seleccionarOpcionMenu(cargarEstampitas)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">🖼️</span> Estampas</button>
-                <button onclick="seleccionarOpcionMenu(cargarTrivia)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">❓</span> Trivia</button>
+                <button onclick="seleccionarOpcionMenu(cargarTrivia)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm col-span-2"><span class="text-lg">❓</span> Trivia Bíblica</button>
             </div>
         </div>
 
@@ -100,8 +101,6 @@
 
         // --- DETECCIÓN AUTOMÁTICA DE PLATAFORMA ---
         const isAndroidApp = window.Capacitor !== undefined || window.isNativeAndroid === true;
-        
-        // Configurar texto dinámico según la plataforma
         const subtituloPlataforma = isAndroidApp ? "Tu espacio de lectura en tu teléfono" : "Tu espacio de lectura en Telegram";
 
         let currentView = 'books'; 
@@ -113,7 +112,7 @@
         let isApocryphaMode = false;
         let rosarioTipoSeleccionado = '';
         let allBooksCache = []; 
-        let currentBibleFilter = 'all'; // Guarda el filtro actual para el botón Volver
+        let currentBibleFilter = 'all'; 
         
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
         let currentTelegramId = tgUser?.id || 123456789;
@@ -184,17 +183,13 @@
 
         function ejecutarSistemaPublicidad(onSuccessCallback) {
             if (isAndroidApp) {
-                console.log("Cargando anuncio nativo de AdMob...");
-                setTimeout(() => {
-                    onSuccessCallback();
-                }, 1000);
+                setTimeout(() => { onSuccessCallback(); }, 1000);
             } else {
                 if (adControllerAdsgram) {
                     adControllerAdsgram.show()
                         .then(() => { onSuccessCallback(); })
                         .catch(() => { alert("ℹ️ Debes ver el anuncio completo para desbloquear."); });
                 } else {
-                    alert("🎁 [Modo Demo] Anuncio simulado con éxito.");
                     onSuccessCallback();
                 }
             }
@@ -202,12 +197,8 @@
 
         function pagarConTelegramStars(onSuccessCallback) {
             if (window.Telegram && window.Telegram.WebApp) {
-                alert("⭐ [Telegram Stars] Procesando pago de 1 Estrellita...");
-                setTimeout(() => {
-                    onSuccessCallback();
-                }, 800);
+                setTimeout(() => { onSuccessCallback(); }, 800);
             } else {
-                alert("⭐ [Modo Demo] Pago con Telegram Stars simulado.");
                 onSuccessCallback();
             }
         }
@@ -223,7 +214,6 @@
                 const { data, error } = await supabaseClient.from('bible_books').select('*').order('id', { ascending: true });
                 if (error) throw error;
                 allBooksCache = data || [];
-                
                 renderizarSeccionBiblia('all');
             } catch (err) { contentBox.innerHTML = '<p class="text-center text-red-500">Error al cargar la biblioteca.</p>'; }
         }
@@ -254,17 +244,13 @@
                     const name = (b.name || '').toLowerCase();
                     return t.includes('antiguo') || t.includes('at') || b.id <= 39 || name.includes('génesis') || (!t.includes('nuevo') && b.id <= 39);
                 });
-                if (librosFiltrados.length === 0) {
-                    librosFiltrados = allBooksCache.filter(b => b.id <= 39);
-                }
+                if (librosFiltrados.length === 0) librosFiltrados = allBooksCache.filter(b => b.id <= 39);
             } else if (filtro === 'new') {
                 librosFiltrados = allBooksCache.filter(b => {
                     const t = (b.testament || '').toLowerCase();
                     return t.includes('nuevo') || t.includes('nt') || b.id > 39;
                 });
-                if (librosFiltrados.length === 0) {
-                    librosFiltrados = allBooksCache.filter(b => b.id > 39);
-                }
+                if (librosFiltrados.length === 0) librosFiltrados = allBooksCache.filter(b => b.id > 39);
             } else if (filtro === 'gospels') {
                 const evangeliosNombres = ['mateo', 'marcos', 'lucas', 'juan'];
                 librosFiltrados = allBooksCache.filter(b => evangeliosNombres.some(ev => (b.name || '').toLowerCase().includes(ev)));
@@ -341,6 +327,54 @@
                     </div>
                 `).join('');
             } catch (err) {}
+        }
+
+        // --- MÚSICA Y ALABANZAS ---
+        function cargarMusica() {
+            currentView = 'music'; backBtn.classList.add('hidden'); 
+            mainTitle.innerText = "🎵 Alabanzas y Música"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Escucha y alaba al Señor";
+            contentBox.innerHTML = `
+                <div class="space-y-4">
+                    <div class="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Sugerencias y Peticiones de Música</h3>
+                        <p class="text-xs opacity-80">¿Qué canción, artista o alabanza te gustaría que añadamos?</p>
+                        <textarea id="musicSuggestionInput" placeholder="Escribe tu sugerencia de música o alabanza..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
+                        <button onclick="enviarSugerenciaMusica()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition">Enviar Sugerencia</button>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h3 class="font-bold text-sm">🎧 Alabanzas Recomendadas</h3>
+                        
+                        <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded">Adoración</span>
+                                <h4 class="font-bold text-base mt-1">Cuan Grande Es Él</h4>
+                                <p class="text-xs italic opacity-85 mt-1">"Señor, mi Dios, al contemplar los cielos, el firmamento y las estrellas mil..."</p>
+                            </div>
+                            <a href="https://www.youtube.com/results?search_query=Cuan+Grande+Es+El" target="_blank" class="block text-center py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs transition shadow mt-2">▶️ Escuchar en YouTube</a>
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded">Alabanza</span>
+                                <h4 class="font-bold text-base mt-1">En El Monte Calvario</h4>
+                                <p class="text-xs italic opacity-85 mt-1">"La vieja cruz marcó historia un día por el bien de la humanidad..."</p>
+                            </div>
+                            <a href="https://www.youtube.com/results?search_query=En+El+Monte+Calvario+himno" target="_blank" class="block text-center py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs transition shadow mt-2">▶️ Escuchar en YouTube</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function enviarSugerenciaMusica() {
+            const text = document.getElementById('musicSuggestionInput').value.trim();
+            if (!text) { alert("Escribe una sugerencia antes de enviar."); return; }
+            try {
+                await supabaseClient.from('prayer_requests').insert([{ telegram_id: currentTelegramId, request_text: "🎵 [Música/Sugerencia]: " + text, is_public: true }]);
+                document.getElementById('musicSuggestionInput').value = '';
+                alert("🙏 ¡Muchas gracias! Tu sugerencia de música ha sido guardada con éxito.");
+            } catch (err) { alert("Error al enviar la sugerencia."); }
         }
 
         // --- FAVORITOS ---
@@ -527,8 +561,9 @@
                 const { data: prayers } = await supabaseClient.from('prayers').select('id, title, content, category_id, audio_url');
                 contentBox.innerHTML = categories.map(cat => {
                     const prayersInCat = prayers.filter(p => p.category_id === cat.id);
+                    if (prayersInCat.length === 0) return '';
                     return `
-                        <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm">
+                        <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm mb-3">
                             <h3 class="font-bold text-base text-amber-600 dark:text-amber-400">${cat.name}</h3>
                             <div class="space-y-1 mt-2">
                                 ${prayersInCat.map(p => `
