@@ -65,7 +65,7 @@
             </button>
         </header>
 
-        <!-- MENÚ DESPLEGABLE OCULTO -->
+        <!-- MENÚ DESPLEGABLE OCULTO (CON EL NUEVO BOTÓN DE BUZÓN AL LADO DE TRIVIA) -->
         <div id="dropdown-menu" class="hidden mb-6 p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-xl border border-amber-500/30 space-y-2 transition-all duration-300">
             <div class="flex justify-between items-center pb-2 border-b border-zinc-200 dark:border-zinc-700">
                 <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Menú Principal</span>
@@ -80,7 +80,8 @@
                 <button onclick="seleccionarOpcionMenu(cargarOraciones)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">🙏</span> Oración</button>
                 <button onclick="seleccionarOpcionMenu(cargarMusica)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">🎵</span> Alabanzas</button>
                 <button onclick="seleccionarOpcionMenu(cargarEstampitas)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">🖼️</span> Estampas</button>
-                <button onclick="seleccionarOpcionMenu(cargarTrivia)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm col-span-2"><span class="text-lg">❓</span> Trivia Bíblica</button>
+                <button onclick="seleccionarOpcionMenu(cargarTrivia)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">❓</span> Trivia Bíblica</button>
+                <button onclick="seleccionarOpcionMenu(cargarBuzonSugerencias)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">💡</span> Buzón Sugerencias</button>
             </div>
         </div>
 
@@ -327,19 +328,12 @@
             } catch (err) {}
         }
 
-        // --- MÚSICA Y ALABANZAS / BUZÓN DE SUGERENCIAS GENERAL ---
+        // --- MÚSICA Y ALABANZAS (SOLO MÚSICA) ---
         function cargarMusica() {
             currentView = 'music'; backBtn.classList.add('hidden'); 
-            mainTitle.innerText = "🎵 Alabanzas y Sugerencias"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Música y buzón de la comunidad";
+            mainTitle.innerText = "🎵 Alabanzas y Música"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Escucha y alaba al Señor";
             contentBox.innerHTML = `
                 <div class="space-y-4">
-                    <div class="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-3">
-                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Buzón de Sugerencias y Cambios</h3>
-                        <p class="text-xs opacity-80">¿Qué oración falta, qué incidencia has tenido o qué cambio te gustaría proponer?</p>
-                        <textarea id="musicSuggestionInput" placeholder="Escribe aquí tu sugerencia, oración faltante, incidencia o cambio..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-24"></textarea>
-                        <button onclick="enviarSugerenciaMusica()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition">Enviar Sugerencia / Incidencia</button>
-                    </div>
-
                     <div class="space-y-2">
                         <h3 class="font-bold text-sm">🎧 Alabanzas Recomendadas</h3>
                         
@@ -365,13 +359,29 @@
             `;
         }
 
-        async function enviarSugerenciaMusica() {
-            const text = document.getElementById('musicSuggestionInput').value.trim();
+        // --- BUZÓN DE SUGERENCIAS INDEPENDIENTE ---
+        function cargarBuzonSugerencias() {
+            currentView = 'suggestion_box'; backBtn.classList.add('hidden');
+            mainTitle.innerText = "💡 Buzón de Sugerencias"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Ayúdanos a mejorar la app";
+            contentBox.innerHTML = `
+                <div class="space-y-4">
+                    <div class="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Envía tus Comentarios o Peticiones</h3>
+                        <p class="text-xs opacity-80">¿Qué oración falta, qué incidencia has tenido o qué cambio te gustaría proponer?</p>
+                        <textarea id="suggestionInput" placeholder="Escribe aquí tu sugerencia, oración faltante, incidencia o cambio..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-28"></textarea>
+                        <button onclick="enviarSugerenciaBuzon()" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition shadow">Enviar Sugerencia / Incidencia</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function enviarSugerenciaBuzon() {
+            const text = document.getElementById('suggestionInput').value.trim();
             if (!text) { alert("Escribe un mensaje antes de enviar."); return; }
             try {
                 await supabaseClient.from('prayer_requests').insert([{ telegram_id: currentTelegramId, request_text: "💡 [Sugerencia/Incidencia]: " + text, is_public: true }]);
-                document.getElementById('musicSuggestionInput').value = '';
-                alert("🙏 ¡Muchas gracias! Tu sugerencia o reporte ha sido guardado con éxito.");
+                document.getElementById('suggestionInput').value = '';
+                alert("🙏 ¡Muchas gracias! Tu mensaje ha sido guardado con éxito.");
             } catch (err) { alert("Error al enviar el mensaje."); }
         }
 
