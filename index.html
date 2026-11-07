@@ -543,18 +543,33 @@
             contentBox.innerHTML = `<div class="space-y-3"><div class="flex gap-2"><input type="text" id="searchInput" placeholder="Ej: Salmo 23, Apocalipsis..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 outline-none text-sm"><button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button></div><div id="search-results" class="space-y-2 mt-4"><p class="text-center opacity-50 text-sm py-5">Escribe una cita o palabra clave</p></div></div>`;
         }
 
-        // --- BUSCADOR OPTIMIZADO (BUSCA PALABRAS Y LIBROS / CISTAS) ---
+        // --- BUSCADOR OPTIMIZADO Y CORREGIDO ---
         async function ejecutarBusqueda() {
             const rawQuery = document.getElementById('searchInput').value.trim();
             const resultsContainer = document.getElementById('search-results');
             if (!rawQuery) return;
             resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
             try {
-                const { data, error } = await supabaseClient
+                // 1. Buscamos primero si coincide con algún libro de la Biblia
+                const { data: librosCoincidentes } = await supabaseClient
+                    .from('bible_books')
+                    .select('id')
+                    .or(`name.ilike.%${rawQuery}%,modern_name.ilike.%${rawQuery}%`);
+
+                const bookIds = librosCoincidentes ? librosCoincidentes.map(b => b.id) : [];
+
+                // 2. Construimos la consulta para los versículos de manera segura
+                let query = supabaseClient
                     .from('bible_verses')
-                    .select('chapter, verse, text, bible_books!inner(name, modern_name)')
-                    .or(`text.ilike.%${rawQuery}%,bible_books.name.ilike.%${rawQuery}%,bible_books.modern_name.ilike.%${rawQuery}%`)
-                    .limit(40);
+                    .select('chapter, verse, text, book_id, bible_books(name, modern_name)');
+
+                if (bookIds.length > 0) {
+                    query = query.or(`text.ilike.%${rawQuery}%,book_id.in.(${bookIds.join(',')})`);
+                } else {
+                    query = query.ilike('text', `%${rawQuery}%`);
+                }
+
+                const { data, error } = await query.limit(40);
 
                 if (error) throw error;
                 if (!data || data.length === 0) { 
@@ -572,6 +587,7 @@
                     </div>
                 `).join('');
             } catch (err) {
+                console.error(err);
                 resultsContainer.innerHTML = `<p class="text-center text-red-500 py-5">Error al realizar la búsqueda.</p>`;
             }
         }
