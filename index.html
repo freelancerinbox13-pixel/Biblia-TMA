@@ -112,7 +112,7 @@
         let allPlansCache = [];
         let isApocryphaMode = false;
         let rosarioTipoSeleccionado = '';
-        let allBooksCache = []; // Caché para los libros de la biblia
+        let allBooksCache = []; 
         
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
         let currentTelegramId = tgUser?.id || 123456789;
@@ -219,7 +219,6 @@
             mainSubtitle.style.display = 'block';
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando contenido...</div>';
             try {
-                const dailyVerseHTML = await obtenerPalabraDelDiaHTML();
                 const { data, error } = await supabaseClient.from('bible_books').select('*').order('id', { ascending: true });
                 if (error) throw error;
                 allBooksCache = data || [];
@@ -231,10 +230,10 @@
         async function renderizarSeccionBiblia(filtro = 'all') {
             const dailyVerseHTML = await obtenerPalabraDelDiaHTML();
             
-            // Botones de categoría
+            // Botones de categoría actualizados con "Biblia completa" y ordenados en 2x2
             const navCategoriasHTML = `
                 <div class="grid grid-cols-2 gap-2 my-3">
-                    <button onclick="renderizarSeccionBiblia('all')" class="p-2.5 rounded-xl font-bold text-xs transition ${filtro === 'all' ? 'bg-amber-600 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 opacity-80'}">📖 Toda la Biblia</button>
+                    <button onclick="renderizarSeccionBiblia('all')" class="p-2.5 rounded-xl font-bold text-xs transition ${filtro === 'all' ? 'bg-amber-600 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 opacity-80'}">📖 Biblia completa</button>
                     <button onclick="renderizarSeccionBiblia('old')" class="p-2.5 rounded-xl font-bold text-xs transition ${filtro === 'old' ? 'bg-amber-600 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 opacity-80'}">📜 Antiguo Testamento</button>
                     <button onclick="renderizarSeccionBiblia('new')" class="p-2.5 rounded-xl font-bold text-xs transition ${filtro === 'new' ? 'bg-amber-600 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 opacity-80'}">✉️ Nuevo Testamento</button>
                     <button onclick="renderizarSeccionBiblia('gospels')" class="p-2.5 rounded-xl font-bold text-xs transition ${filtro === 'gospels' ? 'bg-amber-600 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 opacity-80'}">✝️ Los Evangelios</button>
@@ -243,13 +242,24 @@
 
             let librosFiltrados = allBooksCache;
             if (filtro === 'old') {
-                librosFiltrados = allBooksCache.filter(b => (b.testament || '').toLowerCase().includes('antiguo'));
-            } else if (filtro === 'new') {
-                // Incluye Nuevo Testamento y Apocalipsis/Evangelios si aplica
+                // Filtro flexible por ID (Génesis al Malquías suele ser del 1 al 39) o por texto
                 librosFiltrados = allBooksCache.filter(b => {
                     const t = (b.testament || '').toLowerCase();
-                    return t.includes('nuevo') || t.includes('evangelio');
+                    const name = (b.name || '').toLowerCase();
+                    return t.includes('antiguo') || t.includes('at') || b.id <= 39 || name.includes('génesis') || (!t.includes('nuevo') && b.id <= 39);
                 });
+                // Si la base usa IDs fijos estándar (1-39 Antiguo, 40-66 Nuevo)
+                if (librosFiltrados.length === 0) {
+                    librosFiltrados = allBooksCache.filter(b => b.id <= 39);
+                }
+            } else if (filtro === 'new') {
+                librosFiltrados = allBooksCache.filter(b => {
+                    const t = (b.testament || '').toLowerCase();
+                    return t.includes('nuevo') || t.includes('nt') || b.id > 39;
+                });
+                if (librosFiltrados.length === 0) {
+                    librosFiltrados = allBooksCache.filter(b => b.id > 39);
+                }
             } else if (filtro === 'gospels') {
                 const evangeliosNombres = ['mateo', 'marcos', 'lucas', 'juan'];
                 librosFiltrados = allBooksCache.filter(b => evangeliosNombres.some(ev => (b.name || '').toLowerCase().includes(ev)));
