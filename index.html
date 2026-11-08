@@ -362,6 +362,7 @@
                 tipo: "Adoración",
                 resumen: "Señor, mi Dios, al contemplar los cielos, el firmamento y las estrellas mil...",
                 youtube: "https://www.youtube.com/results?search_query=Cuan+Grande+Es+El",
+                spotify: "https://open.spotify.com/search/Cuan%20Grande%20Es%20El",
                 letra: "Señor, mi Dios, al contemplar los cielos,\nel firmamento y las estrellas mil,\noír los truenos en ruidosos vuelos\ny ver al sol en su cenit brillar.\n\nMi corazón entona la canción:\n¡Cuan grande es Él! ¡Cuan grande es Él!\nMi corazón entona la canción:\n¡Cuan grande es Él! ¡Cuan grande es Él!"
             },
             {
@@ -369,7 +370,25 @@
                 tipo: "Alabanza",
                 resumen: "La vieja cruz marcó historia un día por el bien de la humanidad...",
                 youtube: "https://www.youtube.com/results?search_query=En+El+Monte+Calvario+himno",
+                spotify: "https://open.spotify.com/search/En%20El%20Monte%20Calvario",
                 letra: "En el monte calvario una cruz se alzó,\nsímbolo de afrenta y dolor;\ny yo amo esa cruz donde el Rey de los cielos\nsufrió y murió por el pecador.\n\n¡Oh, yo siempre amaré esa cruz!\nEn sus triunfos mi gloria será;\ny algún día en los cielos, con Cristo en su luz,\npara siempre mi gloria será."
+            },
+            {
+                titulo: "Amazing Grace",
+                tipo: "Adoración",
+                resumen: "Admirable gracia que salvó a un indigno pecador como yo...",
+                youtube: "https://www.youtube.com/results?search_query=Amazing+Grace",
+                spotify: "https://open.spotify.com/search/Amazing%20Grace",
+                letra: "Amazing grace! How sweet the sound\nThat saved a wretch like me!\nI once was lost, but now am found,\nWas blind, but now I see."
+            },
+            {
+                titulo: "Flores de agua y plomo",
+                type: "Música",
+                tipo: "Melendi",
+                resumen: "Canción emotiva y reflexiva de Melendi...",
+                youtube: "https://www.youtube.com/results?search_query=Melendi+Flores+de+agua+y+plomo",
+                spotify: "https://open.spotify.com/search/Melendi%20Flores%20de%20agua%20y%20plomo",
+                letra: "Puedes buscar la letra completa de esta canción en Google o en plataformas oficiales de música."
             }
         ];
 
@@ -386,7 +405,7 @@
                     </div>
 
                     <div class="space-y-2">
-                        <h3 class="font-bold text-sm">🎧 Alabanzas Recomendadas</h3>
+                        <h3 class="font-bold text-sm">🎧 Alabanzas y Canciones</h3>
                         
                         ${listaAlabanzasData.map((alabanza, idx) => `
                             <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between">
@@ -395,9 +414,10 @@
                                     <h4 class="font-bold text-base mt-1">${alabanza.titulo}</h4>
                                     <p class="text-xs italic opacity-85 mt-1">"${alabanza.resumen}"</p>
                                 </div>
-                                <div class="grid grid-cols-2 gap-2 mt-2">
-                                    <button onclick="abrirModalLetra(${idx})" class="py-2.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded-xl font-bold text-xs transition shadow text-center">📜 Ver Letra</button>
-                                    <a href="${alabanza.youtube}" target="_blank" class="block text-center py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs transition shadow">▶️ YouTube</a>
+                                <div class="grid grid-cols-3 gap-1.5 mt-2">
+                                    <button onclick="abrirModalLetra(${idx})" class="py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded-xl font-bold text-[11px] transition shadow text-center">📜 Letra</button>
+                                    <a href="${alabanza.youtube}" target="_blank" class="block text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-[11px] transition shadow">▶️ YouTube</a>
+                                    <a href="${alabanza.spotify}" target="_blank" class="block text-center py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-[11px] transition shadow">💚 Spotify</a>
                                 </div>
                             </div>
                         `).join('')}
@@ -904,7 +924,6 @@
                 const { data } = await supabaseClient.from('prayer_requests').select('*').order('created_at', { ascending: false }).limit(30);
                 if (!data || data.length === 0) { listContainer.innerHTML = '<p class="text-center opacity-60 py-4">No hay peticiones aún.</p>'; return; }
                 
-                // Filtramos para que SOLO aparezcan las peticiones reales (excluyendo sugerencias 💡 y música 🎵)
                 const peticionesReales = data.filter(p => {
                     const texto = (p.request_text || '').trim();
                     return !texto.startsWith('💡') && !texto.startsWith('🎵');
