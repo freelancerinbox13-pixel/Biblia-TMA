@@ -550,12 +550,10 @@
             if (!rawQuery) return;
             resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
             try {
-                // Separamos texto de posibles números (ej: "Salmo 23" -> texto="Salmo", numero="23")
                 const partes = rawQuery.split(' ');
                 const soloTexto = partes.filter(p => isNaN(p)).join(' ').trim();
                 const numeroCapitulo = partes.find(p => !isNaN(p) && p !== '');
 
-                // 1. Buscamos libros que coincidan con el texto introducido
                 const { data: librosCoincidentes } = await supabaseClient
                     .from('bible_books')
                     .select('id')
@@ -563,19 +561,15 @@
 
                 const bookIds = librosCoincidentes ? librosCoincidentes.map(b => b.id) : [];
 
-                // 2. Realizamos la consulta a los versículos
                 let query = supabaseClient
                     .from('bible_verses')
                     .select('chapter, verse, text, book_id, bible_books(name, modern_name)');
 
                 if (bookIds.length > 0 && numeroCapitulo) {
-                    // Si puso libro y número de capítulo (ej: Salmo 23)
                     query = query.in('book_id', bookIds).eq('chapter', Number(numeroCapitulo));
                 } else if (bookIds.length > 0) {
-                    // Si solo puso el nombre del libro (ej: Apocalipsis)
                     query = query.in('book_id', bookIds);
                 } else {
-                    // Si es una palabra suelta (ej: amor, fe)
                     query = query.ilike('text', `%${rawQuery}%`);
                 }
 
@@ -907,9 +901,18 @@
         async function obtenerListaOraciones() {
             const listContainer = document.getElementById('prayer-list');
             try {
-                const { data } = await supabaseClient.from('prayer_requests').select('*').order('created_at', { ascending: false }).limit(20);
+                const { data } = await supabaseClient.from('prayer_requests').select('*').order('created_at', { ascending: false }).limit(30);
                 if (!data || data.length === 0) { listContainer.innerHTML = '<p class="text-center opacity-60 py-4">No hay peticiones aún.</p>'; return; }
-                listContainer.innerHTML = data.map(p => `
+                
+                // Filtramos para que SOLO aparezcan las peticiones reales (excluyendo sugerencias 💡 y música 🎵)
+                const peticionesReales = data.filter(p => {
+                    const texto = (p.request_text || '').trim();
+                    return !texto.startsWith('💡') && !texto.startsWith('🎵');
+                });
+
+                if (peticionesReales.length === 0) { listContainer.innerHTML = '<p class="text-center opacity-60 py-4">No hay peticiones de oración aún.</p>'; return; }
+
+                listContainer.innerHTML = peticionesReales.map(p => `
                     <div class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 text-sm flex justify-between items-start gap-2">
                         <p class="opacity-90 flex-1">${p.request_text}</p>
                         ${p.telegram_id == currentTelegramId ? `<button onclick="eliminarOracion(${p.id})" class="text-xs text-red-500 shrink-0">Borrar</button>` : ''}
