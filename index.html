@@ -56,7 +56,7 @@
     <div id="lyrics-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-zinc-900 text-white rounded-2xl max-w-sm w-full p-5 relative space-y-3 shadow-2xl border border-amber-500/30">
             <button onclick="cerrarModalLetra()" class="absolute top-3 right-3 bg-zinc-800 text-white w-8 h-8 rounded-full font-bold flex items-center justify-center hover:bg-zinc-700">✕</button>
-            <h3 id="lyrics-modal-title" class="font-bold text-base text-amber-400 text-center pr-6">Letra de la Alabanza</h3>
+            <h3 id="lyrics-modal-title" class="font-bold text-base text-amber-400 text-center pr-6">Información / Letra</h3>
             <div id="lyrics-modal-content" class="text-xs italic opacity-90 px-2 font-serif whitespace-pre-line max-h-72 overflow-y-auto bg-zinc-800 p-3 rounded-xl leading-relaxed"></div>
             <button onclick="cerrarModalLetra()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition shadow-md">Cerrar</button>
         </div>
@@ -355,9 +355,8 @@
             } catch (err) {}
         }
 
-        // --- MÚSICA Y ALABANZAS (Con Enlaces de Directo y Playlists) ---
-        const listaAlabanzasData = [
-            // YouTube - Misas en Directo y Festividades
+        // --- SECCIÓN DE MISAS EN DIRECTO Y FESTIVIDADES (SEPARADA) ---
+        const listaMisasData = [
             {
                 titulo: "Misas en TRECE (Ecclesia COPE)",
                 tipo: "YouTube Directo",
@@ -397,9 +396,10 @@
                 youtube: "https://www.youtube.com/@vaticannewses",
                 spotify: "https://open.spotify.com/search/vaticano%20oracion",
                 letra: "Canal oficial de la Santa Sede para festividades solemnes."
-            },
+            }
+        ];
 
-            // Spotify - Playlists de Oración y Adoración
+        const listaPlaylistsMisas = [
             {
                 titulo: "Misa y Cantos Litúrgicos",
                 tipo: "Spotify Playlist",
@@ -439,9 +439,11 @@
                 youtube: "https://www.youtube.com/results?search_query=musica+sacra+coral+catedral",
                 spotify: "https://open.spotify.com/search/polifonia%20sacra",
                 letra: "Piezas corales solemnes de gran tradición litúrgica."
-            },
+            }
+        ];
 
-            // Canciones adicionales solicitadas previamente
+        // --- SECCIÓN DE MÚSICA Y ALABANZAS INDIVIDUALES ---
+        const listaAlabanzasData = [
             {
                 titulo: "Cuan Grande Es Él",
                 tipo: "Adoración",
@@ -542,18 +544,67 @@
 
         function cargarMusica() {
             currentView = 'music'; backBtn.classList.add('hidden'); 
-            mainTitle.innerText = "🎵 Alabanzas y Música"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Misas en directo y alabanzas";
+            mainTitle.innerText = "🎵 Alabanzas y Misas"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Misas en directo, playlists y alabanzas";
             contentBox.innerHTML = `
-                <div class="space-y-4">
+                <div class="space-y-6">
+                    <!-- CAJA DE SUGERENCIAS -->
                     <div class="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-3">
-                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Sugerencias y Peticiones de Música</h3>
-                        <p class="text-xs opacity-80">¿Qué canción, cantante, autor o transmisión te gustaría que añadamos?</p>
-                        <textarea id="musicSuggestionInput" placeholder="Escribe tu sugerencia de música o canal..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
+                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Sugerencias y Peticiones</h3>
+                        <p class="text-xs opacity-80">¿Qué canción, canal de misas o playlist te gustaría añadir?</p>
+                        <textarea id="musicSuggestionInput" placeholder="Escribe tu sugerencia aquí..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
                         <button onclick="enviarSugerenciaMusica()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition">Enviar Sugerencia</button>
                     </div>
 
+                    <!-- SECCIÓN 1: MISAS Y FESTIVIDADES EN DIRECTO (YOUTUBE) -->
                     <div class="space-y-2">
-                        <h3 class="font-bold text-sm">🎧 Alabanzas, Misas y Canales en Directo</h3>
+                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                            <span>⛪</span> Misas y Festividades en Directo (YouTube)
+                        </h3>
+                        <p class="text-[11px] opacity-70">Sigue las eucaristías de fines de semana y fechas importantes.</p>
+                        
+                        ${listaMisasData.map((misa, idx) => `
+                            <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between border-l-4 border-red-500">
+                                <div>
+                                    <span class="text-[10px] uppercase font-bold bg-red-500/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded">${misa.tipo}</span>
+                                    <h4 class="font-bold text-base mt-1">${misa.titulo}</h4>
+                                    <p class="text-xs italic opacity-85 mt-1">"${misa.resumen}"</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 mt-2">
+                                    <button onclick="abrirModalInfoMisa(${idx}, 'misa')" class="py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded-xl font-bold text-[11px] transition shadow text-center">ℹ️ Ver Info</button>
+                                    <a href="${misa.youtube}" target="_blank" class="block text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-[11px] transition shadow">▶️ Ver en Directo</a>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- SECCIÓN 2: PLAYLISTS DE ORACIÓN (SPOTIFY) -->
+                    <div class="space-y-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                        <h3 class="font-bold text-sm text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                            <span>🎧</span> Playlists de Oración y Meditación (Spotify)
+                        </h3>
+                        <p class="text-[11px] opacity-70">Música instrumental, coral y cantos litúrgicos continuos.</p>
+                        
+                        ${listaPlaylistsMisas.map((playlist, idx) => `
+                            <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between border-l-4 border-green-500">
+                                <div>
+                                    <span class="text-[10px] uppercase font-bold bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded">${playlist.tipo}</span>
+                                    <h4 class="font-bold text-base mt-1">${playlist.titulo}</h4>
+                                    <p class="text-xs italic opacity-85 mt-1">"${playlist.resumen}"</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 mt-2">
+                                    <button onclick="abrirModalInfoMisa(${idx}, 'playlist')" class="py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded-xl font-bold text-[11px] transition shadow text-center">ℹ️ Ver Info</button>
+                                    <a href="${playlist.spotify}" target="_blank" class="block text-center py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-[11px] transition shadow">💚 Escuchar</a>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- SECCIÓN 3: ALABANZAS Y CANCIONES INDIVIDUALES -->
+                    <div class="space-y-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                            <span>🎶</span> Alabanzas y Canciones Individuales
+                        </h3>
+                        <p class="text-[11px] opacity-70">Temas de adoración con sus letras y accesos directos.</p>
                         
                         ${listaAlabanzasData.map((alabanza, idx) => `
                             <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between">
@@ -563,7 +614,7 @@
                                     <p class="text-xs italic opacity-85 mt-1">"${alabanza.resumen}"</p>
                                 </div>
                                 <div class="grid grid-cols-3 gap-1.5 mt-2">
-                                    <button onclick="abrirModalLetra(${idx})" class="py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded-xl font-bold text-[11px] transition shadow text-center">📜 Info</button>
+                                    <button onclick="abrirModalLetra(${idx})" class="py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded-xl font-bold text-[11px] transition shadow text-center">📜 Letra</button>
                                     <a href="${alabanza.youtube}" target="_blank" class="block text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-[11px] transition shadow">▶️ YouTube</a>
                                     <a href="${alabanza.spotify}" target="_blank" class="block text-center py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-[11px] transition shadow">💚 Spotify</a>
                                 </div>
@@ -578,6 +629,13 @@
             const alabanza = listaAlabanzasData[index];
             document.getElementById('lyrics-modal-title').innerText = alabanza.titulo;
             document.getElementById('lyrics-modal-content').innerText = alabanza.letra;
+            document.getElementById('lyrics-modal').classList.remove('hidden');
+        }
+
+        function abrirModalInfoMisa(index, tipo) {
+            const item = tipo === 'misa' ? listaMisasData[index] : listaPlaylistsMisas[index];
+            document.getElementById('lyrics-modal-title').innerText = item.titulo;
+            document.getElementById('lyrics-modal-content').innerText = item.letra;
             document.getElementById('lyrics-modal').classList.remove('hidden');
         }
 
@@ -711,7 +769,7 @@
             contentBox.innerHTML = `<div class="space-y-3"><div class="flex gap-2"><input type="text" id="searchInput" placeholder="Ej: Salmo 23, 1:1, Apocalipsis..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 outline-none text-sm"><button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button></div><div id="search-results" class="space-y-2 mt-4"><p class="text-center opacity-50 text-sm py-5">Escribe una cita o palabra clave</p></div></div>`;
         }
 
-        // --- BUSCADOR GENERALIZADO ROBUSTO (Actualizado para entender capítulo:versículo) ---
+        // --- BUSCADOR GENERALIZADO ROBUSTO ---
         async function ejecutarBusqueda() {
             const rawQuery = document.getElementById('searchInput').value.trim();
             const resultsContainer = document.getElementById('search-results');
@@ -723,7 +781,6 @@
                     .from('bible_verses')
                     .select('chapter, verse, text, book_id, bible_books(name, modern_name)');
 
-                // CASO 1: Si incluye dos puntos (Ej: "1:1" o "Génesis 1:1")
                 if (rawQuery.includes(':')) {
                     const [parteIzquierda, versoStr] = rawQuery.split(':');
                     const versoNum = Number(versoStr.trim());
@@ -753,9 +810,7 @@
                         resultsContainer.innerHTML = `<p class="text-center opacity-60 py-5">No se encontró el libro "${nombreLibro}".</p>`;
                         return;
                     }
-                } 
-                // CASO 2: Búsqueda tradicional por palabras o capítulo
-                else {
+                } else {
                     const partes = rawQuery.split(' ');
                     const soloTexto = partes.filter(p => isNaN(p)).join(' ').trim();
                     const numeroCapitulo = partes.find(p => !isNaN(p) && p !== '');
@@ -1181,7 +1236,7 @@
                                 <div class="p-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between">
                                     <div>
                                         <img src="${est.image_url}" onclick="abrirPrevisualizacion('${est.image_url}', '${(est.quote || '').replace(/'/g, "\\'")}', '${est.name.replace(/'/g, "\\'")}')" class="w-full h-36 object-cover rounded-xl mb-2 cursor-pointer hover:opacity-90 transition">
-                                        <p class="text-[11px] italic opacity-80 mt-1">"${est.quote || 'El Señor es mi pastor.'}"</p>
+                                        <p class="text-[11px] italic opacity-80 mt-1">"${est.quote || 'El Señor is mi pastor.'}"</p>
                                     </div>
                                     <button onclick="abrirPrevisualizacion('${est.image_url}', '${(est.quote || '').replace(/'/g, "\\'")}', '${est.name.replace(/'/g, "\\'")}')" class="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition shadow">🔍 Ver en Grande</button>
                                 </div>
