@@ -355,8 +355,93 @@
             } catch (err) {}
         }
 
-        // --- MÚSICA Y ALABANZAS ---
+        // --- MÚSICA Y ALABANZAS (Con Enlaces de Directo y Playlists) ---
         const listaAlabanzasData = [
+            // YouTube - Misas en Directo y Festividades
+            {
+                titulo: "Misas en TRECE (Ecclesia COPE)",
+                tipo: "YouTube Directo",
+                resumen: "Retransmisión habitual de eucaristías dominicales y festividades litúrgicas.",
+                youtube: "https://www.youtube.com/playlist?list=PLsljBbOXi-D9HwDsbIVR93V_a6u6R2nh_",
+                spotify: "https://open.spotify.com/search/misa%20liturgica",
+                letra: "Enlace directo para seguir las misas de fines de semana y días importantes por televisión/YouTube."
+            },
+            {
+                titulo: "EWTN España",
+                tipo: "YouTube Directo",
+                resumen: "Programación continua, rezo del rosario y misas solemnes desde el Vaticano.",
+                youtube: "https://www.youtube.com/@EWTNEspana",
+                spotify: "https://open.spotify.com/search/rosario%20catolico",
+                letra: "Canal católico internacional con coberturas especiales de festividades litúrgicas."
+            },
+            {
+                titulo: "Parroquia Santa María de Caná",
+                tipo: "YouTube Directo",
+                resumen: "Emisión regular de misas de sábados, vísperas, domingos y preceptos.",
+                youtube: "https://www.youtube.com/@ParroquiaSantaMariadeCana",
+                spotify: "https://open.spotify.com/search/cantos%20de%20misa",
+                letra: "Retransmisión parroquial para acompañar los fines de semana."
+            },
+            {
+                titulo: "Tele VID",
+                tipo: "YouTube Directo",
+                resumen: "Canal católico con retransmisiones diarias y dominicales de la Santa Misa.",
+                youtube: "https://www.youtube.com/@TeleVID",
+                spotify: "https://open.spotify.com/search/musica%20catolica",
+                letra: "Comunidad virtual de oración y Eucaristías en directo."
+            },
+            {
+                titulo: "Vatican News (Español)",
+                tipo: "YouTube Directo",
+                resumen: "Grandes misas pontificias del Papa, celebraciones de Navidad, Semana Santa y el Ángelus.",
+                youtube: "https://www.youtube.com/@vaticannewses",
+                spotify: "https://open.spotify.com/search/vaticano%20oracion",
+                letra: "Canal oficial de la Santa Sede para festividades solemnes."
+            },
+
+            // Spotify - Playlists de Oración y Adoración
+            {
+                titulo: "Misa y Cantos Litúrgicos",
+                tipo: "Spotify Playlist",
+                resumen: "Selección musical con cantos litúrgicos tradicionales para oración dominical.",
+                youtube: "https://www.youtube.com/results?search_query=cantos+liturgicos+misa",
+                spotify: "https://open.spotify.com/search/cantos%20liturgicos",
+                letra: "Repertorio de cantos tradicionales de entrada, gloria, comunión y salida."
+            },
+            {
+                titulo: "Adoración 24/7",
+                tipo: "Spotify Playlist",
+                resumen: "Temas continuos de música cristiana de adoración profunda.",
+                youtube: "https://www.youtube.com/results?search_query=adoracion+cristiana+24+7",
+                spotify: "https://open.spotify.com/search/adoracion%2024%207",
+                letra: "Música ambiental para mantener un clima de oración constante."
+            },
+            {
+                titulo: "Música Instrumental Cristiana",
+                tipo: "Spotify Playlist",
+                resumen: "Melodías suaves de piano y violín, ideales para leer la Biblia en silencio.",
+                youtube: "https://www.youtube.com/results?search_query=instrumental+cristiano+para+leer+la+biblia",
+                spotify: "https://open.spotify.com/search/instrumental%20cristiano",
+                letra: "Arreglos instrumentales de himnos sagrados."
+            },
+            {
+                titulo: "Cantos para el Santísimo y Eucaristía",
+                tipo: "Spotify Playlist",
+                resumen: "Repertorio centrado en alabanza eucarística y adoración.",
+                youtube: "https://www.youtube.com/results?search_query=cantos+al+isantisimo+sacramento",
+                spotify: "https://open.spotify.com/search/adoracion%20eucaristica",
+                letra: "Cantos de recogimiento ante el Sagrario."
+            },
+            {
+                titulo: "Coros y Polifonía Sacra",
+                tipo: "Spotify Playlist",
+                resumen: "Música coral clásica de catedrales para solemnizar la oración.",
+                youtube: "https://www.youtube.com/results?search_query=musica+sacra+coral+catedral",
+                spotify: "https://open.spotify.com/search/polifonia%20sacra",
+                letra: "Piezas corales solemnes de gran tradición litúrgica."
+            },
+
+            // Canciones adicionales solicitadas previamente
             {
                 titulo: "Cuan Grande Es Él",
                 tipo: "Adoración",
@@ -457,18 +542,18 @@
 
         function cargarMusica() {
             currentView = 'music'; backBtn.classList.add('hidden'); 
-            mainTitle.innerText = "🎵 Alabanzas y Música"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Escucha y alaba al Señor";
+            mainTitle.innerText = "🎵 Alabanzas y Música"; mainSubtitle.style.display = 'block'; mainSubtitle.innerText = "Misas en directo y alabanzas";
             contentBox.innerHTML = `
                 <div class="space-y-4">
                     <div class="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-3">
                         <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Sugerencias y Peticiones de Música</h3>
-                        <p class="text-xs opacity-80">¿Qué canción, cantante, autor o alabanza te gustaría que añadamos?</p>
-                        <textarea id="musicSuggestionInput" placeholder="Escribe tu sugerencia de música, cantante o autor..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
+                        <p class="text-xs opacity-80">¿Qué canción, cantante, autor o transmisión te gustaría que añadamos?</p>
+                        <textarea id="musicSuggestionInput" placeholder="Escribe tu sugerencia de música o canal..." class="w-full p-3 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-sm resize-none h-20"></textarea>
                         <button onclick="enviarSugerenciaMusica()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition">Enviar Sugerencia</button>
                     </div>
 
                     <div class="space-y-2">
-                        <h3 class="font-bold text-sm">🎧 Alabanzas y Canciones</h3>
+                        <h3 class="font-bold text-sm">🎧 Alabanzas, Misas y Canales en Directo</h3>
                         
                         ${listaAlabanzasData.map((alabanza, idx) => `
                             <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 space-y-2 shadow-sm flex flex-col justify-between">
@@ -478,7 +563,7 @@
                                     <p class="text-xs italic opacity-85 mt-1">"${alabanza.resumen}"</p>
                                 </div>
                                 <div class="grid grid-cols-3 gap-1.5 mt-2">
-                                    <button onclick="abrirModalLetra(${idx})" class="py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded-xl font-bold text-[11px] transition shadow text-center">📜 Letra</button>
+                                    <button onclick="abrirModalLetra(${idx})" class="py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded-xl font-bold text-[11px] transition shadow text-center">📜 Info</button>
                                     <a href="${alabanza.youtube}" target="_blank" class="block text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-[11px] transition shadow">▶️ YouTube</a>
                                     <a href="${alabanza.spotify}" target="_blank" class="block text-center py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-[11px] transition shadow">💚 Spotify</a>
                                 </div>
@@ -504,9 +589,9 @@
             const text = document.getElementById('musicSuggestionInput').value.trim();
             if (!text) { alert("Escribe una sugerencia antes de enviar."); return; }
             try {
-                await supabaseClient.from('prayer_requests').insert([{ telegram_id: currentTelegramId, request_text: "🎵 [Música/Cantante]: " + text, is_public: true }]);
+                await supabaseClient.from('prayer_requests').insert([{ telegram_id: currentTelegramId, request_text: "🎵 [Música/Misa]: " + text, is_public: true }]);
                 document.getElementById('musicSuggestionInput').value = '';
-                alert("🙏 ¡Muchas gracias! Tu sugerencia de música ha sido guardada con éxito.");
+                alert("🙏 ¡Muchas gracias! Tu sugerencia ha sido guardada con éxito.");
             } catch (err) { alert("Error al enviar la sugerencia."); }
         }
 
@@ -833,7 +918,7 @@
         }
 
         async function cargarMenuCategoriasOraciones() {
-            currentView = 'prayer_categories'; backBtn.classList.remove('hidden'); mainTitle.innerText = "📖 Categorías de Oración"; mainSubtitle.innerText = "Selecciona un propósito";
+            currentView = 'prayer_categories'; backBtn.classList.add('hidden'); mainTitle.innerText = "📖 Categorías de Oración"; mainSubtitle.innerText = "Selecciona un propósito";
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando oraciones...</div>';
             try {
                 const { data: categories } = await supabaseClient.from('prayer_categories').select('*').order('id');
