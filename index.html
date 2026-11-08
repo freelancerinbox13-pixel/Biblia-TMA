@@ -448,7 +448,7 @@
             {
                 titulo: "Christine D'Clario – Como El Ciervo / Eterno",
                 tipo: "Adoración",
-                    resumen: "Himnos hermosos de entrega y adoración con Christine D'Clario.",
+                resumen: "Himnos hermosos de entrega y adoración con Christine D'Clario.",
                 youtube: "https://www.youtube.com/results?search_query=Christine+DClario+Como+El+Ciervo",
                 spotify: "https://open.spotify.com/search/Christine%20DClario",
                 letra: "Como el ciervo brama por las aguas,\nasí clama mi alma por ti, Señor."
@@ -623,37 +623,72 @@
 
         function abrirBuscador() {
             currentView = 'search'; backBtn.classList.add('hidden'); mainTitle.innerText = "🔍 Buscador Bíblico"; mainSubtitle.innerText = "Busca por libro, cita o palabras"; mainSubtitle.style.display = 'block';
-            contentBox.innerHTML = `<div class="space-y-3"><div class="flex gap-2"><input type="text" id="searchInput" placeholder="Ej: Salmo 23, Apocalipsis..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 outline-none text-sm"><button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button></div><div id="search-results" class="space-y-2 mt-4"><p class="text-center opacity-50 text-sm py-5">Escribe una cita o palabra clave</p></div></div>`;
+            contentBox.innerHTML = `<div class="space-y-3"><div class="flex gap-2"><input type="text" id="searchInput" placeholder="Ej: Salmo 23, 1:1, Apocalipsis..." class="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 outline-none text-sm"><button onclick="ejecutarBusqueda()" class="px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold text-sm">Buscar</button></div><div id="search-results" class="space-y-2 mt-4"><p class="text-center opacity-50 text-sm py-5">Escribe una cita o palabra clave</p></div></div>`;
         }
 
-        // --- BUSCADOR GENERALIZADO ROBUSTO ---
+        // --- BUSCADOR GENERALIZADO ROBUSTO (Actualizado para entender capítulo:versículo) ---
         async function ejecutarBusqueda() {
             const rawQuery = document.getElementById('searchInput').value.trim();
             const resultsContainer = document.getElementById('search-results');
             if (!rawQuery) return;
             resultsContainer.innerHTML = '<div class="text-center py-6 opacity-65">Buscando...</div>';
+            
             try {
-                const partes = rawQuery.split(' ');
-                const soloTexto = partes.filter(p => isNaN(p)).join(' ').trim();
-                const numeroCapitulo = partes.find(p => !isNaN(p) && p !== '');
-
-                const { data: librosCoincidentes } = await supabaseClient
-                    .from('bible_books')
-                    .select('id')
-                    .or(`name.ilike.%${soloTexto || rawQuery}%,modern_name.ilike.%${soloTexto || rawQuery}%`);
-
-                const bookIds = librosCoincidentes ? librosCoincidentes.map(b => b.id) : [];
-
                 let query = supabaseClient
                     .from('bible_verses')
                     .select('chapter, verse, text, book_id, bible_books(name, modern_name)');
 
-                if (bookIds.length > 0 && numeroCapitulo) {
-                    query = query.in('book_id', bookIds).eq('chapter', Number(numeroCapitulo));
-                } else if (bookIds.length > 0) {
-                    query = query.in('book_id', bookIds);
-                } else {
-                    query = query.ilike('text', `%${rawQuery}%`);
+                // CASO 1: Si incluye dos puntos (Ej: "1:1" o "Génesis 1:1")
+                if (rawQuery.includes(':')) {
+                    const [parteIzquierda, versoStr] = rawQuery.split(':');
+                    const versoNum = Number(versoStr.trim());
+                    const subPartes = parteIzquierda.trim().split(' ');
+                    const posibleCapitulo = Number(subPartes[subPartes.length - 1]);
+                    
+                    let nombreLibro = parteIzquierda.trim();
+                    let capituloNum = null;
+
+                    if (!isNaN(posibleCapitulo)) {
+                        capituloNum = posibleCapitulo;
+                        nombreLibro = subPartes.slice(0, -1).join(' ');
+                    }
+
+                    const { data: libros } = await supabaseClient
+                        .from('bible_books')
+                        .select('id')
+                        .or(`name.ilike.%${nombreLibro}%,modern_name.ilike.%${nombreLibro}%`);
+
+                    if (libros && libros.length > 0) {
+                        const bookIds = libros.map(b => b.id);
+                        query = query.in('book_id', bookIds).eq('verse', versoNum);
+                        if (capituloNum !== null) {
+                            query = query.eq('chapter', capituloNum);
+                        }
+                    } else {
+                        resultsContainer.innerHTML = `<p class="text-center opacity-60 py-5">No se encontró el libro "${nombreLibro}".</p>`;
+                        return;
+                    }
+                } 
+                // CASO 2: Búsqueda tradicional por palabras o capítulo
+                else {
+                    const partes = rawQuery.split(' ');
+                    const soloTexto = partes.filter(p => isNaN(p)).join(' ').trim();
+                    const numeroCapitulo = partes.find(p => !isNaN(p) && p !== '');
+
+                    const { data: librosCoincidentes } = await supabaseClient
+                        .from('bible_books')
+                        .select('id')
+                        .or(`name.ilike.%${soloTexto || rawQuery}%,modern_name.ilike.%${soloTexto || rawQuery}%`);
+
+                    const bookIds = librosCoincidentes ? librosCoincidentes.map(b => b.id) : [];
+
+                    if (bookIds.length > 0 && numeroCapitulo) {
+                        query = query.in('book_id', bookIds).eq('chapter', Number(numeroCapitulo));
+                    } else if (bookIds.length > 0) {
+                        query = query.in('book_id', bookIds);
+                    } else {
+                        query = query.ilike('text', `%${rawQuery}%`);
+                    }
                 }
 
                 const { data, error } = await query.limit(40);
