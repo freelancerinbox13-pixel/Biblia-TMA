@@ -90,6 +90,7 @@
                 <button onclick="seleccionarOpcionMenu(cargarOraciones)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">🙏</span> Oración</button>
                 <button onclick="seleccionarOpcionMenu(cargarMusica)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">🎵</span> Alabanzas</button>
                 <button onclick="seleccionarOpcionMenu(cargarEstampitas)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">🖼️</span> Estampas</button>
+                <button onclick="seleccionarOpcionMenu(cargarRecordatorios)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">⏰</span> Recordatorios</button>
                 <button onclick="seleccionarOpcionMenu(cargarTrivia)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">❓</span> Trivia Bíblica</button>
                 <button onclick="seleccionarOpcionMenu(cargarBuzonSugerencias)" class="p-3 rounded-xl bg-white dark:bg-zinc-900 text-left font-semibold text-sm flex items-center gap-2 active:scale-98 transition shadow-sm"><span class="text-lg">💡</span> Buzón Sugerencias</button>
                 
@@ -353,6 +354,103 @@
                     </div>
                 `).join('');
             } catch (err) {}
+        }
+
+        // --- SECCIÓN DE RECORDATORIOS Y ALARMAS PERSONALES ---
+        function cargarRecordatorios() {
+            currentView = 'reminders'; 
+            backBtn.classList.add('hidden');
+            mainTitle.innerText = "⏰ Mis Recordatorios"; 
+            mainSubtitle.style.display = 'block'; 
+            mainSubtitle.innerText = "Tus avisos diarios de fe";
+
+            let lista = JSON.parse(localStorage.getItem(`bible_reminders_${currentTelegramId}`) || '[]');
+
+            contentBox.innerHTML = `
+                <div class="space-y-4">
+                    <div class="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm text-amber-600 dark:text-amber-400">✨ Nuevo Recordatorio o Alarma</h3>
+                        
+                        <div>
+                            <label class="text-[10px] opacity-70 block mb-1">Título del Recordatorio</label>
+                            <input type="text" id="remTitleInput" placeholder="Ej: Ángelus, Bendecir la comida..." class="w-full p-2.5 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs">
+                        </div>
+
+                        <!-- Opciones rápidas predefinidas -->
+                        <div class="space-y-1">
+                            <span class="text-[10px] opacity-60 block">Sugerencias rápidas:</span>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button onclick="ponerSugerenciaRem('Bendecir la comida')" class="px-2 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-md text-[10px] font-semibold">🍎 Bendecir comida</button>
+                                <button onclick="ponerSugerenciaRem('Santo Rosario')" class="px-2 py-1 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-md text-[10px] font-semibold">📿 Santo Rosario</button>
+                                <button onclick="ponerSugerenciaRem('Leer un Salmo')" class="px-2 py-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md text-[10px] font-semibold">📖 Leer Salmo</button>
+                                <button onclick="ponerSugerenciaRem('Misa dominical')" class="px-2 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded-md text-[10px] font-semibold">⛪ Misa</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] opacity-70 block mb-1">Hora</label>
+                            <input type="time" id="remTimeInput" class="w-full p-2.5 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs font-bold">
+                        </div>
+
+                        <button onclick="guardarNuevoRecordatorio()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs transition shadow">Guardar Recordatorio</button>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h3 class="font-bold text-sm">📋 Lista Activa</h3>
+                        <div id="reminders-list-container" class="space-y-2">
+                            ${lista.length === 0 ? '<p class="text-center opacity-60 py-4 text-xs">No tienes recordatorios creados aún.</p>' : 
+                                lista.map((rem, idx) => `
+                                    <div class="p-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 shadow-sm flex justify-between items-center">
+                                        <div class="space-y-0.5">
+                                            <div class="font-bold text-sm text-amber-600 dark:text-amber-400">${rem.title}</div>
+                                            <div class="text-xs opacity-75 font-mono">⏰ ${rem.time}</div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <button onclick="toggleEstadoRecordatorio(${idx})" class="px-2.5 py-1 rounded-lg text-xs font-bold ${rem.activo ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-zinc-300 dark:bg-zinc-700 opacity-60'}">
+                                                ${rem.activo ? 'Activo' : 'Apagado'}
+                                            </button>
+                                            <button onclick="eliminarRecordatorio(${idx})" class="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg text-xs">🗑️</button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function ponerSugerenciaRem(texto) {
+            document.getElementById('remTitleInput').value = texto;
+        }
+
+        function guardarNuevoRecordatorio() {
+            const title = document.getElementById('remTitleInput').value.trim();
+            const time = document.getElementById('remTimeInput').value;
+            if (!title || !time) {
+                alert("Por favor, escribe un título y selecciona una hora.");
+                return;
+            }
+            let lista = JSON.parse(localStorage.getItem(`bible_reminders_${currentTelegramId}`) || '[]');
+            lista.push({ title, time, activo: true });
+            localStorage.setItem(`bible_reminders_${currentTelegramId}`, JSON.stringify(lista));
+            alert("⏰ Recordatorio guardado con éxito.");
+            cargarRecordatorios();
+        }
+
+        function toggleEstadoRecordatorio(index) {
+            let lista = JSON.parse(localStorage.getItem(`bible_reminders_${currentTelegramId}`) || '[]');
+            if (lista[index]) {
+                lista[index].activo = !lista[index].activo;
+                localStorage.setItem(`bible_reminders_${currentTelegramId}`, JSON.stringify(lista));
+                cargarRecordatorios();
+            }
+        }
+
+        function eliminarRecordatorio(index) {
+            let lista = JSON.parse(localStorage.getItem(`bible_reminders_${currentTelegramId}`) || '[]');
+            lista.splice(index, 1);
+            localStorage.setItem(`bible_reminders_${currentTelegramId}`, JSON.stringify(lista));
+            cargarRecordatorios();
         }
 
         // --- SECCIÓN DE MISAS EN DIRECTO Y FESTIVIDADES (SEPARADA) ---
