@@ -356,7 +356,7 @@
             } catch (err) {}
         }
 
-        // --- SECCIÓN DE RECORDATORIOS Y ALARMAS PERSONALES ---
+        // --- SECCIÓN DE RECORDATORIOS Y ALARMAS PERSONALES (Selectores Manuales de Hora/Minuto para evitar desbordes) ---
         function cargarRecordatorios() {
             currentView = 'reminders'; 
             backBtn.classList.add('hidden');
@@ -365,6 +365,20 @@
             mainSubtitle.innerText = "Tus avisos diarios de fe";
 
             let lista = JSON.parse(localStorage.getItem(`bible_reminders_${currentTelegramId}`) || '[]');
+
+            // Generar opciones de horas (00 a 23)
+            let horasOptions = '';
+            for (let h = 0; h < 24; h++) {
+                let hStr = h < 10 ? '0' + h : '' + h;
+                horasOptions += `<option value="${hStr}">${hStr}</option>`;
+            }
+
+            // Generar opciones de minutos (00 a 55 de 5 en 5 o exactos)
+            let minutosOptions = '';
+            for (let m = 0; m < 60; m += 5) {
+                let mStr = m < 10 ? '0' + m : '' + m;
+                minutosOptions += `<option value="${mStr}">${mStr}</option>`;
+            }
 
             contentBox.innerHTML = `
                 <div class="space-y-4">
@@ -388,8 +402,16 @@
                         </div>
 
                         <div>
-                            <label class="text-[10px] opacity-70 block mb-1">Hora</label>
-                            <input type="time" id="remTimeInput" class="w-full p-2.5 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs font-bold">
+                            <label class="text-[10px] opacity-70 block mb-1">Hora Programada</label>
+                            <div class="flex items-center gap-2">
+                                <select id="remHourSelect" class="flex-1 p-2.5 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs font-bold">
+                                    ${horasOptions}
+                                </select>
+                                <span class="font-bold text-sm">:</span>
+                                <select id="remMinuteSelect" class="flex-1 p-2.5 rounded-lg bg-white dark:bg-zinc-900 border-none outline-none text-xs font-bold">
+                                    ${minutosOptions}
+                                </select>
+                            </div>
                         </div>
 
                         <button onclick="guardarNuevoRecordatorio()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs transition shadow">Guardar Recordatorio</button>
@@ -425,9 +447,12 @@
 
         function guardarNuevoRecordatorio() {
             const title = document.getElementById('remTitleInput').value.trim();
-            const time = document.getElementById('remTimeInput').value;
-            if (!title || !time) {
-                alert("Por favor, escribe un título y selecciona una hora.");
+            const hour = document.getElementById('remHourSelect').value;
+            const minute = document.getElementById('remMinuteSelect').value;
+            const time = `${hour}:${minute}`;
+
+            if (!title) {
+                alert("Por favor, escribe un título para el recordatorio.");
                 return;
             }
             let lista = JSON.parse(localStorage.getItem(`bible_reminders_${currentTelegramId}`) || '[]');
@@ -1190,7 +1215,7 @@
         }
 
         function renderizarPantallaRezo() {
-            currentView = 'rosary_step'; backBtn.classList.remove('hidden');
+            currentView = 'rosary_step'; backBtn.classList.add('hidden');
             const tipo = rosarioActual.tipo; const idx = rosarioActual.misterioIndex;
             const nombreMisterio = listaMisteriosData[tipo][idx];
             let contenidoPaso = '', botonAccion = '', audioPaso = '';
@@ -1308,7 +1333,7 @@
 
         async function cargarNombresEstampas(catId, catName) {
             selectedCategory = { id: catId, name: catName };
-            currentView = 'estampitas_names'; backBtn.classList.remove('hidden');
+            currentView = 'estampitas_names'; backBtn.classList.add('hidden');
             mainTitle.innerText = catName; mainSubtitle.innerText = "Selecciona una estampa";
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando estampas...</div>';
             try {
@@ -1321,7 +1346,7 @@
 
         async function cargarFotosEstampa(nombreEstampa) {
             selectedStampName = nombreEstampa;
-            currentView = 'estampitas_photos'; backBtn.classList.remove('hidden');
+            currentView = 'estampitas_photos'; backBtn.classList.add('hidden');
             mainTitle.innerText = nombreEstampa; mainSubtitle.innerText = "Toca cualquier imagen para previsualizarla";
             contentBox.innerHTML = '<div class="text-center py-10 opacity-65">Cargando imágenes...</div>';
             try {
